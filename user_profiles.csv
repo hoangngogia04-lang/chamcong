@@ -1,0 +1,7 @@
+﻿id,username,password_hash,full_name,role,branch_id
+usr_admin,admin,123,Quản Trị Viên (Admin),admin,
+usr_cn1,quanly_cn1,123,Quản lý Chi Nhánh 1,manager,CN1
+usr_cn2,quanly_cn2,123,Quản lý Chi Nhánh 2,manager,CN2
+usr_cn3,quanly_cn3,123,Quản lý Chi Nhánh 3,manager,CN3
+usr_cn4,quanly_cn4,123,Quản lý Chi Nhánh 4,manager,CN4
+usr_cn5,quanly_cn5,123,Quản lý Chi Nhánh 5,manager,CN5
