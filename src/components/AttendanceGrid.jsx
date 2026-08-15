@@ -161,7 +161,7 @@ export default function AttendanceGrid({
                             ) : val ? (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.1' }}>
                                 <span className="text-start-time">{val}</span>
-                                {val2 && <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>({val2})</span>}
+                                {isPartTime && val2 && <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>({val2})</span>}
                               </div>
                             ) : (
                               <span className="text-empty">-</span>
@@ -191,7 +191,7 @@ export default function AttendanceGrid({
                             key={day}
                             className={`cell-time ${isAdmin && !isLocked ? 'editable' : ''}`}
                             onClick={() => handleCellClickGuard(emp, dateKey, record.start, record.end, record.start2, record.end2, day)}
-                            title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : (val2 ? `Ca 1: ${record.start} - ${val} | Ca 2: ${record.start2} - ${val2}` : 'Click để sửa ca làm')}
+                            title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : (val2 ? (isPartTime ? `Ca 1: ${record.start} - ${val} | Ca 2: ${record.start2} - ${val2}` : `Ca gộp Full-time: ${val} (Tài liệu gốc: ${record.start}-${record.end} & ${record.start2}-${val2})`) : 'Click để sửa ca làm')}
                             style={{
                               opacity: isLocked ? 0.35 : 1,
                               background: isLocked ? 'rgba(0, 0, 0, 0.04)' : undefined,
@@ -205,7 +205,7 @@ export default function AttendanceGrid({
                             ) : val ? (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.1' }}>
                                 <span className="text-end-time">{val}</span>
-                                {val2 && <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>({val2})</span>}
+                                {isPartTime && val2 && <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>({val2})</span>}
                               </div>
                             ) : (
                               <span className="text-empty">-</span>
