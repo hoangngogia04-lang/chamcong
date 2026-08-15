@@ -7,6 +7,8 @@ import UsersPage from './pages/UsersPage';
 import LoginPage from './pages/LoginPage';
 import ShiftEditModal from './components/ShiftEditModal';
 
+import PersonalEmployeePage from './pages/PersonalEmployeePage';
+
 import {
   DEFAULT_BRANCHES,
   DEFAULT_EMPLOYEES,
@@ -275,6 +277,25 @@ export default function App() {
     );
   }
 
+  // Personal Employee Portal: Render dedicated personal shift view for Employee Role
+  if (currentUser.role === 'employee') {
+    return (
+      <PersonalEmployeePage
+        year={year}
+        setYear={setYear}
+        month={month}
+        setMonth={setMonth}
+        currentUser={currentUser}
+        employees={employees}
+        attendance={attendance}
+        branches={branches}
+        theme={theme}
+        setTheme={setTheme}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Top Navbar with Multi-Page Tabs */}
@@ -339,6 +360,7 @@ export default function App() {
           <UsersPage
             users={users}
             branches={branches}
+            employees={employees}
             currentUser={currentUser}
             onAddUser={handleAddUser}
             onUpdateUser={handleUpdateUser}

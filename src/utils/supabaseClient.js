@@ -89,7 +89,7 @@ export const fetchAttendanceFromSupabase = async (year, month) => {
 };
 
 /**
- * Fetch user profiles / managers from Supabase
+ * Fetch user profiles / managers & employees from Supabase
  */
 export const fetchUsersFromSupabase = async () => {
   try {
@@ -102,7 +102,8 @@ export const fetchUsersFromSupabase = async () => {
       password: u.password_hash || u.password || '123',
       fullName: u.full_name,
       role: u.role || 'manager',
-      branchId: u.branch_id || 'ALL'
+      branchId: u.branch_id || 'ALL',
+      employeeId: u.employee_id || null
     }));
   } catch (err) {
     console.error('Error fetching users:', err);
@@ -163,7 +164,8 @@ export const saveUserToSupabase = async (user) => {
     password_hash: user.password,
     full_name: user.fullName,
     role: user.role,
-    branch_id: user.branchId === 'ALL' ? null : user.branchId
+    branch_id: user.branchId === 'ALL' ? null : user.branchId,
+    employee_id: user.employeeId || null
   });
 
   if (error) console.error('Error saving user to Supabase:', error);

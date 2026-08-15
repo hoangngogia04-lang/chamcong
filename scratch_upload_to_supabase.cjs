@@ -6,6 +6,30 @@ const SUPABASE_KEY = 'sb_publishable_5ey2J_CdnPIeeAR0vkPyWA_cEicyX42';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function uploadAllData() {
+  console.log('--- Uploading User Profiles to Supabase ---');
+  const userLines = fs.readFileSync('E:/chamcong/user_profiles.csv', 'utf8').trim().split('\n').slice(1);
+  for (const line of userLines) {
+    if (!line) continue;
+    const parts = line.split(',').map(s => s.replace(/^"|"$/g, ''));
+    const [id, username, password_hash, full_name, role, branch_id, employee_id] = parts;
+    const payload = {
+      id,
+      username,
+      password_hash,
+      full_name,
+      role,
+      branch_id: branch_id || null,
+      employee_id: employee_id || null
+    };
+
+    let { error } = await supabase.from('user_profiles').upsert(payload);
+    if (error && error.code === 'PGRST204') {
+      delete payload.employee_id;
+      const res = await supabase.from('user_profiles').upsert(payload);
+      if (res.error) console.error('User fallback error:', username, res.error);
+    }
+  }
+
   console.log('--- Uploading Employees to Supabase ---');
   const empLines = fs.readFileSync('E:/chamcong/employees.csv', 'utf8').trim().split('\n').slice(1);
   for (const line of empLines) {
@@ -42,7 +66,7 @@ async function uploadAllData() {
     else count++;
   }
 
-  console.log(`Successfully uploaded 23 employees and ${count} attendance records to Supabase Cloud!`);
+  console.log(`Successfully uploaded user profiles, employees and ${count} attendance records to Supabase Cloud!`);
 }
 
 uploadAllData();

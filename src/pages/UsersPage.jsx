@@ -4,6 +4,7 @@ import { KeyRound, UserPlus, Edit2, Trash2, Check, Shield, Building, User } from
 export default function UsersPage({
   users,
   branches,
+  employees = [],
   currentUser,
   onAddUser,
   onUpdateUser,
@@ -14,12 +15,14 @@ export default function UsersPage({
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('manager');
   const [branchId, setBranchId] = useState(branches[0]?.id || 'CN1');
+  const [employeeId, setEmployeeId] = useState('');
 
   const [editingUserId, setEditingUserId] = useState(null);
   const [editFullName, setEditFullName] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [editRole, setEditRole] = useState('manager');
   const [editBranchId, setEditBranchId] = useState('CN1');
+  const [editEmployeeId, setEditEmployeeId] = useState('');
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -33,25 +36,31 @@ export default function UsersPage({
       return;
     }
 
+    const selectedEmp = employees.find(emp => emp.id === employeeId);
+    const finalBranchId = role === 'admin' ? 'ALL' : (role === 'employee' ? (selectedEmp?.branchId || branchId) : branchId);
+
     onAddUser({
       username: username.trim().toLowerCase(),
       password: password.trim(),
-      fullName: fullName.trim(),
+      fullName: role === 'employee' && selectedEmp ? selectedEmp.name : fullName.trim(),
       role,
-      branchId: role === 'admin' ? 'ALL' : branchId
+      branchId: finalBranchId,
+      employeeId: role === 'employee' ? employeeId : null
     });
 
     setUsername('');
     setPassword('');
     setFullName('');
+    setEmployeeId('');
   };
 
   const startEdit = (user) => {
     setEditingUserId(user.id);
     setEditFullName(user.fullName);
     setEditPassword(user.password || '');
-    setEditRole(user.role);
+    setEditRole(user.role || 'manager');
     setEditBranchId(user.branchId || 'CN1');
+    setEditEmployeeId(user.employeeId || '');
   };
 
   const saveEdit = (userId) => {
@@ -60,11 +69,15 @@ export default function UsersPage({
       return;
     }
 
+    const selectedEmp = employees.find(emp => emp.id === editEmployeeId);
+    const finalBranchId = editRole === 'admin' ? 'ALL' : (editRole === 'employee' ? (selectedEmp?.branchId || editBranchId) : editBranchId);
+
     onUpdateUser(userId, {
-      fullName: editFullName.trim(),
+      fullName: editRole === 'employee' && selectedEmp ? selectedEmp.name : editFullName.trim(),
       password: editPassword.trim(),
       role: editRole,
-      branchId: editRole === 'admin' ? 'ALL' : editBranchId
+      branchId: finalBranchId,
+      employeeId: editRole === 'employee' ? editEmployeeId : null
     });
     setEditingUserId(null);
   };
@@ -75,10 +88,10 @@ export default function UsersPage({
       <div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <KeyRound size={28} className="text-purple" />
-          <span>Trang Quản Lý Tài Khoản Quản Lý</span>
+          <span>Trang Quản Lý Tài Khoản Đăng Nhập</span>
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.2rem' }}>
-          Tạo tài khoản phân quyền cho các Quản lý của từng chi nhánh nhập ca làm việc
+          Tạo tài khoản phân quyền cho Admin, Quản Lý Chi Nhánh và Nhân Viên tự xem ca làm cá nhân.
         </p>
       </div>
 
@@ -87,27 +100,71 @@ export default function UsersPage({
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: 'var(--shadow-md)' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <UserPlus size={20} />
-            <span>Tạo Tài Khoản Quản Lý Mới</span>
+            <span>Tạo Tài Khoản Đăng Nhập Mới</span>
           </h3>
 
           <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="form-group">
-              <label>Họ & Tên Quản Lý:</label>
-              <input
-                type="text"
+              <label>Quyền Hạn Hợp Đồng:</label>
+              <select
                 className="form-control"
-                placeholder="VD: Nguyễn Văn B"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
+                <option value="manager">🏬 Quản Lý Chi Nhánh</option>
+                <option value="admin">👑 Quản Trị Viên (Admin)</option>
+                <option value="employee">👤 Nhân Viên (Xem lịch cá nhân)</option>
+              </select>
             </div>
+
+            {/* If Employee Role, Select Employee to Link */}
+            {role === 'employee' ? (
+              <div className="form-group">
+                <label>Liên Kết Hồ Sơ Nhân Viên:</label>
+                <select
+                  className="form-control"
+                  value={employeeId}
+                  onChange={(e) => {
+                    setEmployeeId(e.target.value);
+                    const emp = employees.find(x => x.id === e.target.value);
+                    if (emp) {
+                      setFullName(emp.name);
+                      if (!username) {
+                        setUsername(emp.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                      }
+                    }
+                  }}
+                >
+                  <option value="">-- Chọn Nhân Viên --</option>
+                  {employees.map(emp => {
+                    const br = branches.find(b => b.id === emp.branchId);
+                    return (
+                      <option key={emp.id} value={emp.id}>
+                        #{emp.stt} {emp.name} ({br?.name || emp.branchId})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label>Họ & Tên Người Dùng:</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: Nguyễn Văn B"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+            )}
 
             <div className="form-group">
               <label>Tên Đăng Nhập (Username):</label>
               <input
                 type="text"
                 className="form-control"
-                placeholder="VD: quanly_cn6"
+                placeholder="VD: quanly_cn1 hoặc trucanh"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
@@ -124,31 +181,20 @@ export default function UsersPage({
               />
             </div>
 
-            <div className="form-group">
-              <label>Quyền Hạn:</label>
-              <select
-                className="form-control"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                <option value="manager">Quản Lý Chi Nhánh</option>
-                <option value="admin">Quản Trị Viên (Admin)</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Chi Nhánh Phân Công:</label>
-              <select
-                className="form-control"
-                value={branchId}
-                disabled={role === 'admin'}
-                onChange={(e) => setBranchId(e.target.value)}
-              >
-                {branches.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-            </div>
+            {role !== 'admin' && role !== 'employee' && (
+              <div className="form-group">
+                <label>Chi Nhánh Phân Công:</label>
+                <select
+                  className="form-control"
+                  value={branchId}
+                  onChange={(e) => setBranchId(e.target.value)}
+                >
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
               <UserPlus size={18} />
@@ -172,9 +218,9 @@ export default function UsersPage({
                   <th style={{ width: '50px' }}>STT</th>
                   <th style={{ textAlign: 'left', paddingLeft: '1rem' }}>HỌ & TÊN / USERNAME</th>
                   <th style={{ width: '120px' }}>MẬT KHẨU</th>
-                  <th style={{ width: '140px' }}>QUYỀN HẠN</th>
-                  <th style={{ width: '180px' }}>CHI NHÁNH</th>
-                  <th style={{ width: '140px' }}>THAO TÁC</th>
+                  <th style={{ width: '150px' }}>QUYỀN HẠN</th>
+                  <th style={{ width: '160px' }}>CHI NHÁNH</th>
+                  <th style={{ width: '130px' }}>THAO TÁC</th>
                 </tr>
               </thead>
               <tbody>
@@ -232,10 +278,11 @@ export default function UsersPage({
                           >
                             <option value="manager">Quản Lý</option>
                             <option value="admin">Admin</option>
+                            <option value="employee">Nhân Viên</option>
                           </select>
                         ) : (
-                          <span className={`shift-tag ${u.role === 'admin' ? 'shift-night' : 'shift-full'}`}>
-                            {u.role === 'admin' ? '👑 Admin' : '🏬 Quản Lý'}
+                          <span className={`shift-tag ${u.role === 'admin' ? 'shift-night' : (u.role === 'employee' ? 'shift-afternoon' : 'shift-full')}`}>
+                            {u.role === 'admin' ? '👑 Admin' : (u.role === 'employee' ? '👤 Nhân Viên' : '🏬 Quản Lý')}
                           </span>
                         )}
                       </td>

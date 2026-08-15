@@ -1,7 +1,12 @@
-id,username,password_hash,full_name,role,branch_id
-usr_admin,admin,admin123,Quản Trị Viên (Admin),admin,
-usr_cn1,quanly_cn1,123456,Quản lý Chi Nhánh 1,manager,CN1
-usr_cn2,quanly_cn2,123456,Quản lý Chi Nhánh 2,manager,CN2
-usr_cn3,quanly_cn3,123456,Quản lý Chi Nhánh 3,manager,CN3
-usr_cn4,quanly_cn4,123456,Quản lý Chi Nhánh 4,manager,CN4
-usr_cn5,quanly_cn5,123456,Quản lý Chi Nhánh 5,manager,CN5
+id,username,password_hash,full_name,role,branch_id,employee_id
+usr_admin,admin,admin123,Quản Trị Viên (Admin),admin,,
+usr_cn1,quanly_cn1,123,Quản lý Chi Nhánh 1 (Biên Hoà),manager,CN1,
+usr_cn2,quanly_cn2,123,Quản lý Chi Nhánh 2 (Long Thành),manager,CN2,
+usr_cn3,quanly_cn3,123,Quản lý Chi Nhánh 3 (Long Khánh),manager,CN3,
+usr_cn4,quanly_cn4,123,Quản lý Chi Nhánh 4 (Xuân Lộc),manager,CN4,
+usr_cn5,quanly_cn5,123,Quản lý Chi Nhánh 5 (Lê Duẩn),manager,CN5,
+usr_emp_1,hoangp,123,Hoàng(P),employee,CN1,emp_1
+usr_emp_2,trucanh,123,Trúc Anh,employee,CN1,emp_2
+usr_emp_3,van,123,Vân,employee,CN1,emp_3
+usr_emp_4,dung,123,Dung,employee,CN1,emp_4
+usr_emp_5,nhi,123,Nhi,employee,CN1,emp_5

@@ -54,8 +54,12 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   password_hash TEXT NOT NULL,
   full_name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'manager', -- 'admin' hoặc 'manager'
-  branch_id TEXT REFERENCES public.branches(id) ON DELETE SET NULL
+  branch_id TEXT REFERENCES public.branches(id) ON DELETE SET NULL,
+  employee_id TEXT REFERENCES public.employees(id) ON DELETE SET NULL
 );
+
+-- Bổ sung cột employee_id nếu bảng đã tồn tại từ trước
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS employee_id TEXT REFERENCES public.employees(id) ON DELETE SET NULL;
 
 -- Thêm tài khoản mẫu mặc định
 INSERT INTO public.user_profiles (id, username, password_hash, full_name, role, branch_id) VALUES
