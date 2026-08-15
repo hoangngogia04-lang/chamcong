@@ -203,6 +203,8 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
     merges.push({ s: { r: rStart, c: 2 }, e: { r: rEnd, c: 2 } });
 
     // Days Shift Data: FRONT SECTION (Ca 1) & BACK SECTION (Part-Time Ca 2)
+    const isPartTime = (emp.type || 'fulltime') === 'parttime';
+
     for (let d = 1; d <= daysInMonth; d++) {
       const dayStr = String(d).padStart(2, '0');
       const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
@@ -214,6 +216,10 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
       const end2Val = record.end2 || '';
 
       const isOff = startVal === 'OFF';
+      const hasSplitShift = Boolean(start2Val && end2Val);
+
+      // Yellow highlight (#FFFF00) for split shift cells in Excel!
+      const cellBgColor = hasSplitShift ? 'FFFF00' : shiftBgColor;
 
       // --- FRONT SECTION (Cols D..AH) ---
       const frontColIdx = d + 2;
@@ -226,11 +232,11 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
           font: {
             sz: 9,
             name: 'Times New Roman',
-            bold: isOff,
+            bold: isOff || hasSplitShift,
             color: isOff ? { rgb: 'FF0000' } : { rgb: '000000' }
           },
           alignment: { horizontal: 'center', vertical: 'center' },
-          fill: { fgColor: { rgb: shiftBgColor } },
+          fill: { fgColor: { rgb: cellBgColor } },
           border: thinBorder
         }
       };
@@ -238,34 +244,43 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
       ws[frontEndRef] = {
         v: endVal,
         s: {
-          font: { sz: 9, name: 'Times New Roman' },
+          font: {
+            sz: 9,
+            name: 'Times New Roman',
+            bold: hasSplitShift
+          },
           alignment: { horizontal: 'center', vertical: 'center' },
-          fill: { fgColor: { rgb: shiftBgColor } },
+          fill: { fgColor: { rgb: cellBgColor } },
           border: thinBorder
         }
       };
 
       // --- BACK SECTION (Cols AI..BA starting at col 34) ---
+      // ONLY write Ca 2 in back section for Part-Time employees! (Full-Time split shifts were already combined in front section)
       const backColIdx = backSectionColStart + (d - 1);
       const backStartRef = XLSX.utils.encode_cell({ r: rStart, c: backColIdx });
       const backEndRef = XLSX.utils.encode_cell({ r: rEnd, c: backColIdx });
 
+      const backStartVal = isPartTime ? start2Val : '';
+      const backEndVal = isPartTime ? end2Val : '';
+      const backBgColor = (isPartTime && hasSplitShift) ? 'FFFF00' : shiftBgColor;
+
       ws[backStartRef] = {
-        v: start2Val,
+        v: backStartVal,
         s: {
-          font: { sz: 9, name: 'Times New Roman' },
+          font: { sz: 9, name: 'Times New Roman', bold: hasSplitShift },
           alignment: { horizontal: 'center', vertical: 'center' },
-          fill: { fgColor: { rgb: shiftBgColor } },
+          fill: { fgColor: { rgb: backBgColor } },
           border: thinBorder
         }
       };
 
       ws[backEndRef] = {
-        v: end2Val,
+        v: backEndVal,
         s: {
-          font: { sz: 9, name: 'Times New Roman' },
+          font: { sz: 9, name: 'Times New Roman', bold: hasSplitShift },
           alignment: { horizontal: 'center', vertical: 'center' },
-          fill: { fgColor: { rgb: shiftBgColor } },
+          fill: { fgColor: { rgb: backBgColor } },
           border: thinBorder
         }
       };
