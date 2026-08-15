@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { getDaysInMonth } from '../utils/excelHelper';
 
 export default function PersonalEmployeePage({
@@ -8,18 +8,26 @@ export default function PersonalEmployeePage({
   month,
   setMonth,
   currentUser,
-  employees,
-  attendance,
-  branches,
+  employees = [],
+  attendance = {},
+  branches = [],
   theme,
   setTheme,
   onLogout
 }) {
   const [selectedView, setSelectedView] = useState('list'); // 'list' | 'table'
 
-  // Find linked employee record
-  const employee = employees.find(e => e.id === currentUser?.employeeId || e.name.toLowerCase() === currentUser?.fullName?.toLowerCase());
-  const branchObj = branches.find(b => b.id === (employee?.branchId || currentUser?.branchId));
+  // Find linked employee record safely
+  const matchedEmp = employees.find(e => e.id === currentUser?.employeeId || (e.name && currentUser?.fullName && e.name.toLowerCase() === currentUser.fullName.toLowerCase()));
+  const employee = matchedEmp || {
+    id: currentUser?.employeeId || 'emp_1',
+    name: currentUser?.fullName || 'Nhân Viên',
+    branchId: currentUser?.branchId || 'CN1',
+    type: 'fulltime',
+    stt: 1
+  };
+
+  const branchObj = branches.find(b => b.id === employee.branchId) || { name: 'Chi Nhánh' };
 
   const daysInMonth = getDaysInMonth(year, month);
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -41,7 +49,7 @@ export default function PersonalEmployeePage({
   const isPartTime = (employee?.type || 'fulltime') === 'parttime';
 
   // Calculate monthly stats for this employee
-  const empAttMap = attendance[employee?.id] || {};
+  const empAttMap = (attendance && attendance[employee.id]) || {};
   let totalWorkingDays = 0;
   let totalOffDays = 0;
   let totalMinutesWorked = 0;
