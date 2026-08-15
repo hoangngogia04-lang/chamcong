@@ -1,24 +1,24 @@
-id,stt,name,branch_id
-emp_1,1,Hoàng(P),CN1
-emp_2,2,Trúc Anh,CN1
-emp_3,3,Vân,CN1
-emp_4,4,Dung,CN1
-emp_5,5,Nhi,CN1
-emp_6,6,Trang(LT),CN2
-emp_7,7,Huỳnh (LT),CN2
-emp_8,8,L.Anh (Lt),CN2
-emp_9,9,Nhiên,CN2
-emp_10,10,Hân,CN2
-emp_11,11,Châu,CN2
-emp_12,12,Tuyền,CN2
-emp_13,13,Long,CN2
-emp_14,14,Hằng,CN2
-emp_15,15,Diễm (LK),CN3
-emp_16,16,Đạt,CN3
-emp_17,17,Ngoc (LK),CN3
-emp_18,18,Thao (LK),CN3
-emp_19,19,Dương (LK),CN3
-emp_20,20,Hoa (XL),CN3
-emp_21,21,Ý  (XL),CN4
-emp_22,22,Thi (XL),CN4
-emp_23,23,MY (XL),CN4
+id,stt,name,branch_id,type
+"emp_1",1,"Hoàng(P)","CN5","fulltime"
+"emp_2",2,"Trúc Anh","CN1","parttime"
+"emp_3",3,"Vân","CN1","fulltime"
+"emp_4",4,"Dung","CN1","fulltime"
+"emp_5",5,"Nhi","CN1","parttime"
+"emp_6",6,"Trang(LT)","CN2","fulltime"
+"emp_7",7,"Huỳnh (LT)","CN2","fulltime"
+"emp_8",8,"L.Anh (Lt)","CN2","parttime"
+"emp_9",9,"Nhiệm","CN1","parttime"
+"emp_10",10,"Hân","CN1","parttime"
+"emp_11",11,"Châu","CN1","fulltime"
+"emp_12",12,"Tuyền","CN1","fulltime"
+"emp_13",13,"Long","CN1","parttime"
+"emp_14",14,"Hằng","CN1","fulltime"
+"emp_15",15,"Diễm (LK)","CN3","fulltime"
+"emp_16",16,"Đạt","CN1","parttime"
+"emp_17",17,"Ngoc (LK)","CN3","fulltime"
+"emp_18",18,"Thao (LK)","CN3","parttime"
+"emp_19",19,"Dương (LK)","CN3","parttime"
+"emp_20",20,"Hoa (XL)","CN4","parttime"
+"emp_21",21,"Ý  (XL)","CN4","parttime"
+"emp_22",22,"Thi (XL)","CN4","parttime"
+"emp_23",23,"MY (XL)","CN4","fulltime"
