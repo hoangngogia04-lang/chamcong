@@ -43,13 +43,13 @@ export default function AttendanceGrid({
     return { name: dayNames[dayOfWeek], isWeekend: dayOfWeek === 0 || dayOfWeek === 6 };
   };
 
-  const handleCellClickGuard = (emp, dateKey, start, end, day) => {
+  const handleCellClickGuard = (emp, dateKey, start, end, start2, end2, day) => {
     if (!isAdmin) return;
     if (day > maxAllowedDay) {
       alert(`⚠️ Không thể chấm công trước cho ngày tương lai (Ngày ${day}/${month})!`);
       return;
     }
-    onCellClick(emp, dateKey, start, end);
+    onCellClick(emp, dateKey, start, end, start2, end2);
   };
 
   return (
@@ -107,6 +107,7 @@ export default function AttendanceGrid({
               filteredEmployees.map((emp, index) => {
                 const empAtt = attendance[emp.id] || {};
                 const branchObj = branches.find(b => b.id === emp.branchId);
+                const isPartTime = (emp.type || 'fulltime') === 'parttime';
 
                 return (
                   <React.Fragment key={emp.id}>
@@ -116,11 +117,16 @@ export default function AttendanceGrid({
                         {emp.stt || (index + 1)}
                       </td>
                       <td className="col-name" rowSpan={2}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span>{emp.name}</span>
-                          <span className="branch-tag">
-                            {branchObj?.code || emp.branchId}
-                          </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontWeight: 700 }}>{emp.name}</span>
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            <span className="branch-tag">
+                              {branchObj?.code || emp.branchId}
+                            </span>
+                            <span className={`branch-tag ${isPartTime ? 'text-amber' : 'text-cyan'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
+                              {isPartTime ? 'Part-Time' : 'Full-Time'}
+                            </span>
+                          </div>
                         </div>
                       </td>
                       <td className="col-ca" style={{ color: 'var(--accent-emerald)' }}>
@@ -133,14 +139,15 @@ export default function AttendanceGrid({
                         const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
                         const record = empAtt[dateKey] || {};
                         const val = record.start || '';
+                        const val2 = record.start2 || '';
                         const isOff = val === 'OFF';
 
                         return (
                           <td
                             key={day}
                             className={`cell-time ${isAdmin && !isLocked ? 'editable' : ''}`}
-                            onClick={() => handleCellClickGuard(emp, dateKey, record.start, record.end, day)}
-                            title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : 'Click để sửa ca làm'}
+                            onClick={() => handleCellClickGuard(emp, dateKey, record.start, record.end, record.start2, record.end2, day)}
+                            title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : (val2 ? `Ca 1: ${val} - ${record.end} | Ca 2: ${val2} - ${record.end2}` : 'Click để sửa ca làm')}
                             style={{
                               opacity: isLocked ? 0.35 : 1,
                               background: isLocked ? 'rgba(0, 0, 0, 0.04)' : undefined,
@@ -152,7 +159,10 @@ export default function AttendanceGrid({
                             ) : isOff ? (
                               <span className="text-off">OFF</span>
                             ) : val ? (
-                              <span className="text-start-time">{val}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.1' }}>
+                                <span className="text-start-time">{val}</span>
+                                {val2 && <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>({val2})</span>}
+                              </div>
                             ) : (
                               <span className="text-empty">-</span>
                             )}
@@ -173,14 +183,15 @@ export default function AttendanceGrid({
                         const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
                         const record = empAtt[dateKey] || {};
                         const val = record.end || '';
+                        const val2 = record.end2 || '';
                         const isOff = record.start === 'OFF';
 
                         return (
                           <td
                             key={day}
                             className={`cell-time ${isAdmin && !isLocked ? 'editable' : ''}`}
-                            onClick={() => handleCellClickGuard(emp, dateKey, record.start, record.end, day)}
-                            title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : 'Click để sửa ca làm'}
+                            onClick={() => handleCellClickGuard(emp, dateKey, record.start, record.end, record.start2, record.end2, day)}
+                            title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : (val2 ? `Ca 1: ${record.start} - ${val} | Ca 2: ${record.start2} - ${val2}` : 'Click để sửa ca làm')}
                             style={{
                               opacity: isLocked ? 0.35 : 1,
                               background: isLocked ? 'rgba(0, 0, 0, 0.04)' : undefined,
@@ -192,7 +203,10 @@ export default function AttendanceGrid({
                             ) : isOff ? (
                               <span className="text-off" style={{ opacity: 0.3 }}>-</span>
                             ) : val ? (
-                              <span className="text-end-time">{val}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.1' }}>
+                                <span className="text-end-time">{val}</span>
+                                {val2 && <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>({val2})</span>}
+                              </div>
                             ) : (
                               <span className="text-empty">-</span>
                             )}
@@ -213,11 +227,15 @@ export default function AttendanceGrid({
         <div className="legend-list">
           <div className="legend-item">
             <span className="legend-dot" style={{ background: 'var(--accent-emerald)' }}></span>
-            <span>Giờ lên ca</span>
+            <span>Giờ lên ca 1</span>
           </div>
           <div className="legend-item">
             <span className="legend-dot" style={{ background: 'var(--accent-cyan)' }}></span>
-            <span>Giờ xuống ca</span>
+            <span>Giờ xuống ca 1</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot" style={{ background: 'var(--accent-purple)' }}></span>
+            <span>Ca 2 / Part-Time (Gãy)</span>
           </div>
           <div className="legend-item">
             <span className="legend-dot" style={{ background: 'var(--accent-rose)' }}></span>

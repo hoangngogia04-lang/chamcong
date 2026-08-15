@@ -20,6 +20,7 @@ const BRANCH_COLORS = {
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
+ * Supports Front Section (Cols D..AH for Ca 1) & Back Section (Cols AI..BA for Part-Time Ca 2)
  */
 export const exportToExcel = (year, month, employees, attendanceData, branchPrefix = '') => {
   const daysInMonth = getDaysInMonth(year, month);
@@ -78,7 +79,7 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
     }
   }
 
-  // 3. Column Header Row 4 (Row 3 / Index 3): STT, TÊN, CA(班別), 1..31
+  // 3. Column Header Row 4 (Row 3 / Index 3): STT, TÊN, CA(班別), 1..31 (FRONT & BACK SECTIONS)
   ws['A4'] = {
     v: 'STT',
     s: {
@@ -104,11 +105,36 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
     }
   };
 
+  // FRONT SECTION DAYS (Cols 3..3+daysInMonth-1)
   for (let d = 1; d <= daysInMonth; d++) {
     const colIdx = d + 2;
     const cellRef = XLSX.utils.encode_cell({ r: 3, c: colIdx });
     const dateObj = new Date(year, month - 1, d);
     const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    ws[cellRef] = {
+      v: d,
+      s: {
+        font: {
+          bold: true,
+          sz: 10,
+          name: 'Times New Roman',
+          color: isWeekend ? { rgb: 'FF0000' } : { rgb: '000000' }
+        },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: thinBorder
+      }
+    };
+  }
+
+  // BACK SECTION DAYS (Cols 34..34+daysInMonth-1, starting at Column AI)
+  const backSectionColStart = 34; // Col AI
+  for (let d = 1; d <= daysInMonth; d++) {
+    const colIdx = backSectionColStart + (d - 1);
+    const cellRef = XLSX.utils.encode_cell({ r: 3, c: colIdx });
+    const dateObj = new Date(year, month - 1, d);
+    const dayOfWeek = dateObj.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
     ws[cellRef] = {
@@ -176,22 +202,25 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
     ws[caEndCell] = { v: '', s: { fill: { fgColor: { rgb: shiftBgColor } }, border: thinBorder } };
     merges.push({ s: { r: rStart, c: 2 }, e: { r: rEnd, c: 2 } });
 
-    // Days Shift Data
+    // Days Shift Data: FRONT SECTION (Ca 1) & BACK SECTION (Part-Time Ca 2)
     for (let d = 1; d <= daysInMonth; d++) {
-      const colIdx = d + 2;
       const dayStr = String(d).padStart(2, '0');
       const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
 
       const record = (attendanceData[emp.id] && attendanceData[emp.id][dateKey]) || {};
       const startVal = record.start || '';
       const endVal = record.end || '';
-
-      const cellStartRef = XLSX.utils.encode_cell({ r: rStart, c: colIdx });
-      const cellEndRef = XLSX.utils.encode_cell({ r: rEnd, c: colIdx });
+      const start2Val = record.start2 || '';
+      const end2Val = record.end2 || '';
 
       const isOff = startVal === 'OFF';
 
-      ws[cellStartRef] = {
+      // --- FRONT SECTION (Cols D..AH) ---
+      const frontColIdx = d + 2;
+      const frontStartRef = XLSX.utils.encode_cell({ r: rStart, c: frontColIdx });
+      const frontEndRef = XLSX.utils.encode_cell({ r: rEnd, c: frontColIdx });
+
+      ws[frontStartRef] = {
         v: startVal,
         s: {
           font: {
@@ -206,8 +235,33 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
         }
       };
 
-      ws[cellEndRef] = {
+      ws[frontEndRef] = {
         v: endVal,
+        s: {
+          font: { sz: 9, name: 'Times New Roman' },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: shiftBgColor } },
+          border: thinBorder
+        }
+      };
+
+      // --- BACK SECTION (Cols AI..BA starting at col 34) ---
+      const backColIdx = backSectionColStart + (d - 1);
+      const backStartRef = XLSX.utils.encode_cell({ r: rStart, c: backColIdx });
+      const backEndRef = XLSX.utils.encode_cell({ r: rEnd, c: backColIdx });
+
+      ws[backStartRef] = {
+        v: start2Val,
+        s: {
+          font: { sz: 9, name: 'Times New Roman' },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: shiftBgColor } },
+          border: thinBorder
+        }
+      };
+
+      ws[backEndRef] = {
+        v: end2Val,
         s: {
           font: { sz: 9, name: 'Times New Roman' },
           alignment: { horizontal: 'center', vertical: 'center' },
@@ -220,9 +274,10 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
     currentRow += 2;
   });
 
-  // Apply merges and ref bounds
+  // Apply merges and ref bounds up to back section
+  const totalMaxCols = backSectionColStart + daysInMonth - 1;
   ws['!merges'] = merges;
-  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: daysInMonth + 2 } });
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: totalMaxCols } });
 
   // Column Widths
   const colWidths = [
@@ -230,6 +285,14 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
     { wch: 18 }, // TÊN
     { wch: 10 }  // CA
   ];
+  for (let d = 1; d <= daysInMonth; d++) {
+    colWidths.push({ wch: 7 });
+  }
+
+  // Widths for gap and back section
+  for (let c = daysInMonth + 3; c < backSectionColStart; c++) {
+    colWidths.push({ wch: 4 });
+  }
   for (let d = 1; d <= daysInMonth; d++) {
     colWidths.push({ wch: 7 });
   }
@@ -268,10 +331,21 @@ export const importFromExcel = (file, existingEmployees, branches) => {
         // Row 4 (index 3) contains days
         const daysRow = sheetJson[3] || [];
         const dayIndices = [];
-        for (let c = 3; c < daysRow.length; c++) {
+        const backDayIndices = [];
+
+        // Front section days (Cols 3..33)
+        for (let c = 3; c < Math.min(34, daysRow.length); c++) {
           const val = daysRow[c];
           if (val && !isNaN(val)) {
             dayIndices.push({ day: parseInt(val, 10), colIdx: c });
+          }
+        }
+
+        // Back section days (Cols 34..)
+        for (let c = 34; c < daysRow.length; c++) {
+          const val = daysRow[c];
+          if (val && !isNaN(val)) {
+            backDayIndices.push({ day: parseInt(val, 10), colIdx: c });
           }
         }
 
@@ -317,7 +391,8 @@ export const importFromExcel = (file, existingEmployees, branches) => {
               id: `emp_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
               stt: typeof stt === 'number' ? stt : empSttCounter++,
               name: name,
-              branchId: branchId
+              branchId: branchId,
+              type: 'fulltime'
             };
             newEmployees.push(emp);
           }
@@ -329,6 +404,7 @@ export const importFromExcel = (file, existingEmployees, branches) => {
           const rowEnd = sheetJson[r + 1] || [];
           const formattedMonthStr = String(detectedMonth).padStart(2, '0');
 
+          // Read Front Section (Ca 1)
           dayIndices.forEach(({ day, colIdx }) => {
             const dayStr = String(day).padStart(2, '0');
             const dateKey = `${detectedYear}-${formattedMonthStr}-${dayStr}`;
@@ -348,9 +424,35 @@ export const importFromExcel = (file, existingEmployees, branches) => {
 
             if (startStr || endStr) {
               newAttendance[emp.id][dateKey] = {
+                ...newAttendance[emp.id][dateKey],
                 start: startStr,
                 end: endStr
               };
+            }
+          });
+
+          // Read Back Section (Ca 2)
+          backDayIndices.forEach(({ day, colIdx }) => {
+            const dayStr = String(day).padStart(2, '0');
+            const dateKey = `${detectedYear}-${formattedMonthStr}-${dayStr}`;
+
+            let valStart2 = rowStart[colIdx];
+            let valEnd2 = rowEnd[colIdx];
+
+            let start2Str = '';
+            let end2Str = '';
+
+            if (valStart2 !== undefined && valStart2 !== null) start2Str = String(valStart2).trim();
+            if (valEnd2 !== undefined && valEnd2 !== null) end2Str = String(valEnd2).trim();
+
+            if (start2Str || end2Str) {
+              newAttendance[emp.id][dateKey] = {
+                ...newAttendance[emp.id][dateKey],
+                start2: start2Str,
+                end2: end2Str
+              };
+              // If employee has Ca 2, auto mark as parttime
+              emp.type = 'parttime';
             }
           });
         }

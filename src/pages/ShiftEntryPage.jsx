@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, User, Check, CheckCircle2, Sparkles, Info, Lock, AlertCircle } from 'lucide-react';
+import { Clock, Calendar, User, Check, CheckCircle2, Sparkles, Info, Lock, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function ShiftEntryPage({
   year,
@@ -34,12 +34,15 @@ export default function ShiftEntryPage({
   const [selectedDay, setSelectedDay] = useState(Math.min(currentRealDay, maxAllowedDay || 1));
   const [shiftStart, setShiftStart] = useState('08:00');
   const [shiftEnd, setShiftEnd] = useState('17:00');
+  const [shiftStart2, setShiftStart2] = useState('');
+  const [shiftEnd2, setShiftEnd2] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const selectedEmp = employees.find(e => e.id === selectedEmpId);
   const formattedMonthStr = String(month).padStart(2, '0');
+  const isPartTime = (selectedEmp?.type || 'fulltime') === 'parttime';
 
   // Auto-fill existing shift when Employee or Day changes
   useEffect(() => {
@@ -51,15 +54,26 @@ export default function ShiftEntryPage({
     const empAttMap = attendance[selectedEmpId] || {};
     const existingRec = empAttMap[dateKey];
 
-    if (existingRec && (existingRec.start || existingRec.end)) {
+    if (existingRec && (existingRec.start || existingRec.end || existingRec.start2)) {
       setShiftStart(existingRec.start || '');
       setShiftEnd(existingRec.end || '');
+      setShiftStart2(existingRec.start2 || '');
+      setShiftEnd2(existingRec.end2 || '');
     } else {
-      setShiftStart('08:00');
-      setShiftEnd('17:00');
+      if (isPartTime) {
+        setShiftStart('08:00');
+        setShiftEnd('13:00');
+        setShiftStart2('17:00');
+        setShiftEnd2('22:00');
+      } else {
+        setShiftStart('08:00');
+        setShiftEnd('17:00');
+        setShiftStart2('');
+        setShiftEnd2('');
+      }
     }
     setErrorMsg('');
-  }, [selectedEmpId, selectedDay, year, month, attendance]);
+  }, [selectedEmpId, selectedDay, year, month, attendance, isPartTime]);
 
   // Fixed Presets with clean emoji icons
   const presets = [
@@ -68,12 +82,32 @@ export default function ShiftEntryPage({
     { label: 'Ca Tối (13h - 22h)', start: '13:00', end: '22:00', icon: '🌙' },
     { label: 'Sáng Ngắn (8h - 13h)', start: '08:00', end: '13:00', icon: '🌅' },
     { label: 'Tối Ngắn (17h - 22h)', start: '17:00', end: '22:00', icon: '🌆' },
+    { label: 'Ca Gãy Part-Time (8h-13h & 17h-22h)', start: '08:00', end: '13:00', start2: '17:00', end2: '22:00', icon: '🔄' },
     { label: 'Nghỉ (OFF)', start: 'OFF', end: '', icon: '☕' }
   ];
 
   const handleApplyPreset = (p) => {
-    setShiftStart(p.start);
-    setShiftEnd(p.end);
+    if (p.start2) {
+      if (isPartTime) {
+        setShiftStart(p.start);
+        setShiftEnd(p.end);
+        setShiftStart2(p.start2);
+        setShiftEnd2(p.end2);
+      } else {
+        // For Full-time: auto-combine split shifts into continuous span 08:00 - 18:00
+        setShiftStart('08:00');
+        setShiftEnd('18:00');
+        setShiftStart2('');
+        setShiftEnd2('');
+      }
+    } else {
+      setShiftStart(p.start);
+      setShiftEnd(p.end);
+      if (p.start === 'OFF') {
+        setShiftStart2('');
+        setShiftEnd2('');
+      }
+    }
     setErrorMsg('');
   };
 
@@ -86,6 +120,7 @@ export default function ShiftEntryPage({
 
   // Auto format shorthand time inputs (e.g. "8" -> "08:00", "800" -> "08:00", "1730" -> "17:30")
   const formatTimeOnBlur = (val) => {
+    if (!val) return '';
     let clean = val.trim().toUpperCase();
     if (clean === 'OFF' || !clean) return clean;
 
@@ -131,6 +166,8 @@ export default function ShiftEntryPage({
     // Validate Time Formats
     const formattedStart = formatTimeOnBlur(shiftStart);
     const formattedEnd = shiftStart.toUpperCase() === 'OFF' ? '' : formatTimeOnBlur(shiftEnd);
+    const formattedStart2 = formatTimeOnBlur(shiftStart2);
+    const formattedEnd2 = formatTimeOnBlur(shiftEnd2);
 
     if (!isValidTimeFormat(formattedStart)) {
       setErrorMsg(`⚠️ Giờ lên ca "${shiftStart}" không đúng định dạng! Vui lòng nhập dạng 08:00 hoặc OFF.`);
@@ -142,16 +179,32 @@ export default function ShiftEntryPage({
       return;
     }
 
+    if (formattedStart2 && !isValidTimeFormat(formattedStart2)) {
+      setErrorMsg(`⚠️ Giờ lên ca 2 "${shiftStart2}" không đúng định dạng!`);
+      return;
+    }
+
+    if (formattedEnd2 && !isValidTimeFormat(formattedEnd2)) {
+      setErrorMsg(`⚠️ Giờ xuống ca 2 "${shiftEnd2}" không đúng định dạng!`);
+      return;
+    }
+
     setShiftStart(formattedStart);
     setShiftEnd(formattedEnd);
+    setShiftStart2(formattedStart2);
+    setShiftEnd2(formattedEnd2);
 
     const formattedDay = String(selectedDay).padStart(2, '0');
     const dateKey = `${year}-${formattedMonthStr}-${formattedDay}`;
 
-    onSaveShift(selectedEmpId, dateKey, formattedStart, formattedEnd);
+    onSaveShift(selectedEmpId, dateKey, formattedStart, formattedEnd, formattedStart2, formattedEnd2);
 
     const empName = selectedEmp ? selectedEmp.name : 'Nhân viên';
-    const timeStr = formattedStart === 'OFF' ? 'Nghỉ (OFF)' : `${formattedStart} - ${formattedEnd}`;
+    let timeStr = formattedStart === 'OFF' ? 'Nghỉ (OFF)' : `${formattedStart} - ${formattedEnd}`;
+    if (formattedStart2 && formattedEnd2) {
+      timeStr += ` & Ca 2: ${formattedStart2} - ${formattedEnd2}`;
+    }
+
     setSuccessMsg(`✅ Đã lưu ca làm việc cho ${empName} (Ngày ${selectedDay}/${month}): ${timeStr}`);
 
     setTimeout(() => {
@@ -164,7 +217,7 @@ export default function ShiftEntryPage({
   const currentDateKey = `${year}-${formattedMonthStr}-${currentFormattedDay}`;
   const empAttMap = attendance[selectedEmpId] || {};
   const currentExistingRec = empAttMap[currentDateKey];
-  const hasExistingShift = currentExistingRec && (currentExistingRec.start || currentExistingRec.end);
+  const hasExistingShift = currentExistingRec && (currentExistingRec.start || currentExistingRec.end || currentExistingRec.start2);
 
   return (
     <div className="main-content" style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -175,7 +228,7 @@ export default function ShiftEntryPage({
           <span>Trang Nhập Ca Làm Việc Cho Nhân Viên</span>
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-          Chỉ cho phép chấm công từ ngày hôm nay (Ngày {currentRealDay}) trở về trước. Các ngày tương lai đã được khóa an toàn.
+          Hỗ trợ phân loại <strong>👔 Full-Time (Gộp Ca)</strong> và <strong>⏱️ Part-Time (Ca Gãy 2 Ca)</strong>. Các ngày tương lai đã được khóa an toàn.
         </p>
       </div>
 
@@ -230,10 +283,17 @@ export default function ShiftEntryPage({
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Step 1: Choose Employee */}
           <div className="form-group">
-            <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <User size={18} />
-              <span>1. Chọn Nhân Viên:</span>
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <User size={18} />
+                <span>1. Chọn Nhân Viên:</span>
+              </label>
+
+              <span className={`shift-tag ${isPartTime ? 'shift-afternoon' : 'shift-morning'}`}>
+                {isPartTime ? '⏱️ Nhân viên Part-Time (Ca Gãy)' : '👔 Nhân viên Full-Time (Chính thức)'}
+              </span>
+            </div>
+
             <select
               className="form-control"
               value={selectedEmpId}
@@ -242,9 +302,10 @@ export default function ShiftEntryPage({
             >
               {visibleEmployees.map(emp => {
                 const br = branches.find(b => b.id === emp.branchId);
+                const empIsPartTime = (emp.type || 'fulltime') === 'parttime';
                 return (
                   <option key={emp.id} value={emp.id}>
-                    {emp.stt}. {emp.name} ({br ? br.name : emp.branchId})
+                    {emp.stt}. {emp.name} ({br ? br.name : emp.branchId}) — [{empIsPartTime ? 'Part-Time' : 'Full-Time'}]
                   </option>
                 );
               })}
@@ -274,7 +335,7 @@ export default function ShiftEntryPage({
                 <Info size={15} />
                 <span>
                   {hasExistingShift
-                    ? `Ca ngày ${selectedDay}/${month}: ${currentExistingRec.start === 'OFF' ? 'Nghỉ (OFF)' : `${currentExistingRec.start} - ${currentExistingRec.end}`}`
+                    ? `Ca ngày ${selectedDay}/${month}: ${currentExistingRec.start === 'OFF' ? 'Nghỉ (OFF)' : `${currentExistingRec.start} - ${currentExistingRec.end}${currentExistingRec.start2 ? ` & Ca 2: ${currentExistingRec.start2}-${currentExistingRec.end2}` : ''}`}`
                     : `Ngày ${selectedDay}/${month}: Chưa có ca`}
                 </span>
               </div>
@@ -288,7 +349,7 @@ export default function ShiftEntryPage({
                 const formattedDay = String(day).padStart(2, '0');
                 const dateKey = `${year}-${formattedMonthStr}-${formattedDay}`;
                 const dayRec = empAttMap[dateKey];
-                const dayHasShift = dayRec && (dayRec.start || dayRec.end);
+                const dayHasShift = dayRec && (dayRec.start || dayRec.end || dayRec.start2);
 
                 return (
                   <button
@@ -352,8 +413,8 @@ export default function ShiftEntryPage({
                       padding: '0.65rem 1rem',
                       borderRadius: 'var(--radius-md)',
                       border: isCurrent ? '2px solid var(--accent-emerald)' : '1px solid var(--border-color)',
-                      background: isCurrent ? 'rgba(16, 185, 129, 0.2)' : (p.start === '08:00' && p.end === '22:00' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-input)'),
-                      color: isCurrent ? 'var(--accent-emerald)' : (p.start === '08:00' && p.end === '22:00' ? 'var(--accent-amber)' : 'var(--text-main)'),
+                      background: isCurrent ? 'rgba(16, 185, 129, 0.2)' : (p.start2 ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-input)'),
+                      color: isCurrent ? 'var(--accent-emerald)' : (p.start2 ? 'var(--accent-purple)' : 'var(--text-main)'),
                       fontWeight: 700,
                       cursor: 'pointer',
                       fontSize: '0.88rem',
@@ -370,40 +431,75 @@ export default function ShiftEntryPage({
             </div>
           </div>
 
-          {/* Time Inputs with Constraints & Auto Format */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-            <div className="form-group">
-              <label>Giờ Lên Ca (Định dạng HH:MM hoặc OFF):</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="VD: 08:00 hoặc OFF"
-                value={shiftStart}
-                onChange={(e) => setShiftStart(e.target.value)}
-                onBlur={() => setShiftStart(formatTimeOnBlur(shiftStart))}
-                style={{ fontSize: '1rem', padding: '0.75rem' }}
-              />
-              <small style={{ color: 'var(--text-dim)', fontSize: '0.78rem', marginTop: '0.2rem' }}>
-                💡 Gõ số 8 ➔ tự chuyển 08:00 | Gõ 1730 ➔ tự chuyển 17:30
-              </small>
+          {/* Step 4: Time Inputs (Ca 1 & Ca 2 for Part-Time) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-emerald)' }}>
+              {isPartTime ? '🟢 Ca 1 (Phần Trước Bảng):' : '🟢 Ca Làm Việc Full-Time:'}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Giờ Lên Ca 1 (HH:MM hoặc OFF):</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: 08:00 hoặc OFF"
+                  value={shiftStart}
+                  onChange={(e) => setShiftStart(e.target.value)}
+                  onBlur={() => setShiftStart(formatTimeOnBlur(shiftStart))}
+                  style={{ fontSize: '1rem', padding: '0.75rem' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Giờ Xuống Ca 1 (HH:MM):</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: 13:00 hoặc 17:00"
+                  value={shiftEnd}
+                  onChange={(e) => setShiftEnd(e.target.value)}
+                  onBlur={() => setShiftEnd(formatTimeOnBlur(shiftEnd))}
+                  disabled={shiftStart.toUpperCase() === 'OFF'}
+                  style={{ fontSize: '1rem', padding: '0.75rem' }}
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label>Giờ Xuống Ca (Định dạng HH:MM):</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="VD: 17:00"
-                value={shiftEnd}
-                onChange={(e) => setShiftEnd(e.target.value)}
-                onBlur={() => setShiftEnd(formatTimeOnBlur(shiftEnd))}
-                disabled={shiftStart.toUpperCase() === 'OFF'}
-                style={{ fontSize: '1rem', padding: '0.75rem' }}
-              />
-              <small style={{ color: 'var(--text-dim)', fontSize: '0.78rem', marginTop: '0.2rem' }}>
-                💡 Gõ số 22 ➔ tự chuyển 22:00 | Gõ 1300 ➔ tự chuyển 13:00
-              </small>
-            </div>
+            {/* If Part-Time, show Ca 2 inputs */}
+            {isPartTime && (
+              <>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-purple)', marginTop: '0.5rem' }}>
+                  🟣 Ca 2 / Ca Gãy Part-Time (Phần Sau Cột AI..BA Bảng Excel):
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label>Giờ Lên Ca 2 (HH:MM):</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="VD: 17:00"
+                      value={shiftStart2}
+                      onChange={(e) => setShiftStart2(e.target.value)}
+                      onBlur={() => setShiftStart2(formatTimeOnBlur(shiftStart2))}
+                      style={{ fontSize: '1rem', padding: '0.75rem' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Giờ Xuống Ca 2 (HH:MM):</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="VD: 22:00"
+                      value={shiftEnd2}
+                      onChange={(e) => setShiftEnd2(e.target.value)}
+                      onBlur={() => setShiftEnd2(formatTimeOnBlur(shiftEnd2))}
+                      style={{ fontSize: '1rem', padding: '0.75rem' }}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Submit Action */}

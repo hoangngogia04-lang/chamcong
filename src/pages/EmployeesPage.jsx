@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, Search, Edit2, Trash2, Check, Users, Store, Building } from 'lucide-react';
+import { UserPlus, Search, Edit2, Trash2, Check, Users, Store, Building, Tag } from 'lucide-react';
 
 export default function EmployeesPage({
   employees,
@@ -13,12 +13,14 @@ export default function EmployeesPage({
 
   const [name, setName] = useState('');
   const [branchId, setBranchId] = useState(currentUser?.branchId !== 'ALL' && currentUser?.branchId ? currentUser.branchId : branches[0]?.id || 'CN1');
+  const [type, setType] = useState('fulltime');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranchFilter, setSelectedBranchFilter] = useState('ALL');
 
   const [editingEmpId, setEditingEmpId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editBranchId, setEditBranchId] = useState('CN1');
+  const [editType, setEditType] = useState('fulltime');
 
   // Filter employees
   const filteredEmployees = employees.filter(emp => {
@@ -35,19 +37,21 @@ export default function EmployeesPage({
   const handleAdd = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onAddEmployee({ name: name.trim(), branchId });
+    onAddEmployee({ name: name.trim(), branchId, type });
     setName('');
+    setType('fulltime');
   };
 
   const startEdit = (emp) => {
     setEditingEmpId(emp.id);
     setEditName(emp.name);
     setEditBranchId(emp.branchId);
+    setEditType(emp.type || 'fulltime');
   };
 
   const saveEdit = (empId) => {
     if (!editName.trim()) return;
-    onUpdateEmployee(empId, { name: editName.trim(), branchId: editBranchId });
+    onUpdateEmployee(empId, { name: editName.trim(), branchId: editBranchId, type: editType });
     setEditingEmpId(null);
   };
 
@@ -123,6 +127,18 @@ export default function EmployeesPage({
               </select>
             </div>
 
+            <div className="form-group">
+              <label>Loại Hợp Đồng / Ca Làm:</label>
+              <select
+                className="form-control"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              >
+                <option value="fulltime">👔 Chính Thức (Full-Time / Gộp Ca)</option>
+                <option value="parttime">⏱️ Part-Time (Ca Gãy 2 Ca)</option>
+              </select>
+            </div>
+
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
               <UserPlus size={18} />
               <span>Thêm Nhân Viên</span>
@@ -152,16 +168,17 @@ export default function EmployeesPage({
             <table className="attendance-table" style={{ borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ width: '60px' }}>STT</th>
+                  <th style={{ width: '50px' }}>STT</th>
                   <th style={{ textAlign: 'left', paddingLeft: '1rem' }}>TÊN NHÂN VIÊN</th>
-                  <th style={{ width: '220px' }}>CHI NHÁNH</th>
-                  <th style={{ width: '140px' }}>THAO TÁC</th>
+                  <th style={{ width: '150px' }}>LOẠI CA</th>
+                  <th style={{ width: '160px' }}>CHI NHÁNH</th>
+                  <th style={{ width: '130px' }}>THAO TÁC</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ padding: '3rem', color: 'var(--text-dim)' }}>
+                    <td colSpan={5} style={{ padding: '3rem', color: 'var(--text-dim)' }}>
                       Không có nhân viên nào trong danh sách!
                     </td>
                   </tr>
@@ -169,6 +186,7 @@ export default function EmployeesPage({
                   filteredEmployees.map((emp, index) => {
                     const branchObj = branches.find(b => b.id === emp.branchId);
                     const isEditing = editingEmpId === emp.id;
+                    const isPartTime = (emp.type || 'fulltime') === 'parttime';
 
                     return (
                       <tr key={emp.id} style={{ background: index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.015)' }}>
@@ -187,6 +205,23 @@ export default function EmployeesPage({
                           ) : (
                             <span style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.95rem' }}>
                               {emp.name}
+                            </span>
+                          )}
+                        </td>
+
+                        <td>
+                          {isEditing ? (
+                            <select
+                              className="form-control"
+                              value={editType}
+                              onChange={(e) => setEditType(e.target.value)}
+                            >
+                              <option value="fulltime">Full-Time</option>
+                              <option value="parttime">Part-Time (Gãy)</option>
+                            </select>
+                          ) : (
+                            <span className={`shift-tag ${isPartTime ? 'shift-afternoon' : 'shift-morning'}`}>
+                              {isPartTime ? '⏱️ Part-Time' : '👔 Full-Time'}
                             </span>
                           )}
                         </td>

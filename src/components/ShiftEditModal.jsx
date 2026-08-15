@@ -8,17 +8,25 @@ export default function ShiftEditModal({
   dateKey,
   initialStart = '',
   initialEnd = '',
+  initialStart2 = '',
+  initialEnd2 = '',
   onSave
 }) {
   const [start, setStart] = useState(initialStart);
   const [end, setEnd] = useState(initialEnd);
+  const [start2, setStart2] = useState(initialStart2);
+  const [end2, setEnd2] = useState(initialEnd2);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const isPartTime = (employee?.type || 'fulltime') === 'parttime';
 
   useEffect(() => {
     setStart(initialStart);
     setEnd(initialEnd);
+    setStart2(initialStart2);
+    setEnd2(initialEnd2);
     setErrorMsg('');
-  }, [initialStart, initialEnd, isOpen]);
+  }, [initialStart, initialEnd, initialStart2, initialEnd2, isOpen]);
 
   if (!isOpen || !employee) return null;
 
@@ -28,13 +36,32 @@ export default function ShiftEditModal({
     { label: 'Ca Sáng (8h - 17h)', start: '08:00', end: '17:00', icon: '☀️' },
     { label: 'Ca Tối (13h - 22h)', start: '13:00', end: '22:00', icon: '🌙' },
     { label: 'Sáng Ngắn (8h - 13h)', start: '08:00', end: '13:00', icon: '🌅' },
-    { label: 'Tối Ngắn (17h - 22h)', start: '17:00', end: '22:00', icon: '🌆' },
+    { label: 'Tối Ngắn (17h - 22h)', start: '17:00', end: '22:00', icon: '<ctrl42>' },
+    { label: 'Ca Gãy Part-Time (8h-13h & 17h-22h)', start: '08:00', end: '13:00', start2: '17:00', end2: '22:00', icon: '🔄' },
     { label: 'Nghỉ (OFF)', start: 'OFF', end: '', icon: '☕' }
   ];
 
   const handlePresetClick = (p) => {
-    setStart(p.start);
-    setEnd(p.end);
+    if (p.start2) {
+      if (isPartTime) {
+        setStart(p.start);
+        setEnd(p.end);
+        setStart2(p.start2);
+        setEnd2(p.end2);
+      } else {
+        setStart('08:00');
+        setEnd('18:00');
+        setStart2('');
+        setEnd2('');
+      }
+    } else {
+      setStart(p.start);
+      setEnd(p.end);
+      if (p.start === 'OFF') {
+        setStart2('');
+        setEnd2('');
+      }
+    }
     setErrorMsg('');
   };
 
@@ -47,6 +74,7 @@ export default function ShiftEditModal({
 
   // Auto format shorthand time inputs (e.g. "8" -> "08:00", "300" -> "03:00", "1730" -> "17:30")
   const formatTimeOnBlur = (val) => {
+    if (!val) return '';
     let clean = val.trim().toUpperCase();
     if (clean === 'OFF' || !clean) return clean;
 
@@ -81,6 +109,8 @@ export default function ShiftEditModal({
 
     const formattedStart = formatTimeOnBlur(start);
     const formattedEnd = start.toUpperCase() === 'OFF' ? '' : formatTimeOnBlur(end);
+    const formattedStart2 = formatTimeOnBlur(start2);
+    const formattedEnd2 = formatTimeOnBlur(end2);
 
     if (!isValidTimeFormat(formattedStart)) {
       setErrorMsg(`⚠️ Giờ lên ca "${start}" không đúng định dạng! Vui lòng nhập dạng 08:00 hoặc OFF.`);
@@ -92,7 +122,17 @@ export default function ShiftEditModal({
       return;
     }
 
-    onSave(employee.id, dateKey, formattedStart, formattedEnd);
+    if (formattedStart2 && !isValidTimeFormat(formattedStart2)) {
+      setErrorMsg(`⚠️ Giờ lên ca 2 "${start2}" không đúng định dạng!`);
+      return;
+    }
+
+    if (formattedEnd2 && !isValidTimeFormat(formattedEnd2)) {
+      setErrorMsg(`⚠️ Giờ xuống ca 2 "${end2}" không đúng định dạng!`);
+      return;
+    }
+
+    onSave(employee.id, dateKey, formattedStart, formattedEnd, formattedStart2, formattedEnd2);
     onClose();
   };
 
@@ -101,12 +141,12 @@ export default function ShiftEditModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
         {/* Modal Header */}
         <div className="modal-header">
           <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Clock size={20} className="text-cyan" />
-            <span>Chỉnh Sửa Ca Làm - {employee.name}</span>
+            <span>Chỉnh Sửa Ca - {employee.name}</span>
           </h3>
           <button className="modal-close" onClick={onClose}>
             <X size={20} />
@@ -115,9 +155,15 @@ export default function ShiftEditModal({
 
         {/* Modal Body */}
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-input)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)' }}>
-            <Calendar size={16} className="text-cyan" />
-            <span>Ngày: <strong>{dateFormatted}</strong></span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', background: 'var(--bg-input)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Calendar size={16} className="text-cyan" />
+              <span>Ngày: <strong>{dateFormatted}</strong></span>
+            </span>
+
+            <span className={`shift-tag ${isPartTime ? 'shift-afternoon' : 'shift-morning'}`}>
+              {isPartTime ? '⏱️ Part-Time (Ca Gãy)' : '👔 Full-Time'}
+            </span>
           </div>
 
           {errorMsg && (
@@ -155,9 +201,9 @@ export default function ShiftEditModal({
                     alignItems: 'center',
                     gap: '0.4rem',
                     padding: '0.5rem 0.65rem',
-                    fontSize: '0.85rem',
-                    background: p.start === '08:00' && p.end === '22:00' ? 'rgba(245, 158, 11, 0.15)' : undefined,
-                    color: p.start === '08:00' && p.end === '22:00' ? 'var(--accent-amber)' : undefined
+                    fontSize: '0.82rem',
+                    background: p.start2 ? 'rgba(139, 92, 246, 0.15)' : undefined,
+                    color: p.start2 ? 'var(--accent-purple)' : undefined
                   }}
                 >
                   <span>{p.icon}</span>
@@ -167,40 +213,73 @@ export default function ShiftEditModal({
             </div>
           </div>
 
-          {/* Time Inputs */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div className="form-group">
-              <label style={{ fontSize: '0.85rem' }}>⏰ Giờ Lên Ca (Check-In):</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="VD: 08:00 hoặc OFF"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-                onBlur={() => setStart(formatTimeOnBlur(start))}
-                autoFocus
-              />
-              <small style={{ color: 'var(--text-dim)', fontSize: '0.74rem', marginTop: '0.2rem' }}>
-                Gõ 300 ➔ 03:00 | 8 ➔ 08:00
-              </small>
+          {/* Ca 1 Inputs */}
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-emerald)', marginBottom: '0.4rem' }}>
+              {isPartTime ? '🟢 Ca 1 (Phần Trước):' : '🟢 Giờ Ca Làm:'}
             </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '0.82rem' }}>Giờ Lên Ca 1:</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: 08:00 hoặc OFF"
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                  onBlur={() => setStart(formatTimeOnBlur(start))}
+                  autoFocus
+                />
+              </div>
 
-            <div className="form-group">
-              <label style={{ fontSize: '0.85rem' }}>⏱️ Giờ Xuống Ca (Check-Out):</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="VD: 17:00"
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-                onBlur={() => setEnd(formatTimeOnBlur(end))}
-                disabled={start.toUpperCase() === 'OFF'}
-              />
-              <small style={{ color: 'var(--text-dim)', fontSize: '0.74rem', marginTop: '0.2rem' }}>
-                Gõ 2200 ➔ 22:00 | 1730 ➔ 17:30
-              </small>
+              <div className="form-group">
+                <label style={{ fontSize: '0.82rem' }}>Giờ Xuống Ca 1:</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: 13:00"
+                  value={end}
+                  onChange={(e) => setEnd(e.target.value)}
+                  onBlur={() => setEnd(formatTimeOnBlur(end))}
+                  disabled={start.toUpperCase() === 'OFF'}
+                />
+              </div>
             </div>
           </div>
+
+          {/* Ca 2 Inputs for Part-Time */}
+          {isPartTime && (
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-purple)', marginBottom: '0.4rem' }}>
+                🟣 Ca 2 / Ca Gãy Part-Time (Phần Sau Cột AI..BA):
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.82rem' }}>Giờ Lên Ca 2:</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="VD: 17:00"
+                    value={start2}
+                    onChange={(e) => setStart2(e.target.value)}
+                    onBlur={() => setStart2(formatTimeOnBlur(start2))}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label style={{ fontSize: '0.82rem' }}>Giờ Xuống Ca 2:</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="VD: 22:00"
+                    value={end2}
+                    onChange={(e) => setEnd2(e.target.value)}
+                    onBlur={() => setEnd2(formatTimeOnBlur(end2))}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Modal Actions */}
           <div className="modal-footer">

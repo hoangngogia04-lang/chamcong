@@ -190,7 +190,7 @@ export default function App() {
   };
 
   // Cell click -> Open Shift Edit Modal
-  const handleCellClick = (employee, dateKey, currentStart, currentEnd) => {
+  const handleCellClick = (employee, dateKey, currentStart, currentEnd, currentStart2 = '', currentEnd2 = '') => {
     if (!isAdmin && currentUser?.branchId !== employee.branchId) {
       alert('⚠️ Bạn chỉ có quyền chỉnh sửa ca làm việc thuộc Chi nhánh của bạn!');
       return;
@@ -200,18 +200,22 @@ export default function App() {
       employee,
       dateKey,
       start: currentStart || '',
-      end: currentEnd || ''
+      end: currentEnd || '',
+      start2: currentStart2 || '',
+      end2: currentEnd2 || ''
     });
     setIsShiftModalOpen(true);
   };
 
-  // Save Shift Record
-  const handleSaveShift = (empId, dateKey, startVal, endVal) => {
+  // Save Shift Record (supporting Ca 1 & Ca 2 for Part-Time split shifts)
+  const handleSaveShift = (empId, dateKey, startVal, endVal, start2Val = '', end2Val = '') => {
     setAttendance(prev => {
       const empAtt = prev[empId] ? { ...prev[empId] } : {};
       empAtt[dateKey] = {
         start: startVal,
-        end: endVal
+        end: endVal,
+        start2: start2Val,
+        end2: end2Val
       };
       return {
         ...prev,
@@ -219,7 +223,7 @@ export default function App() {
       };
     });
 
-    saveShiftToSupabase(empId, dateKey, startVal, endVal);
+    saveShiftToSupabase(empId, dateKey, startVal, endVal, start2Val, end2Val);
   };
 
   // Add Employee
@@ -228,7 +232,8 @@ export default function App() {
       id: `emp_${Date.now()}`,
       stt: employees.length + 1,
       name: newEmpData.name,
-      branchId: newEmpData.branchId
+      branchId: newEmpData.branchId,
+      type: newEmpData.type || 'fulltime'
     };
     setEmployees(prev => [...prev, newEmp]);
     saveEmployeeToSupabase(newEmp);
@@ -351,7 +356,8 @@ export default function App() {
           dateKey={selectedCell.dateKey}
           initialStart={selectedCell.start}
           initialEnd={selectedCell.end}
-          presets={DEFAULT_SHIFT_PRESETS}
+          initialStart2={selectedCell.start2}
+          initialEnd2={selectedCell.end2}
           onSave={handleSaveShift}
         />
       )}

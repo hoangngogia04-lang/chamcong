@@ -32,7 +32,7 @@ export const fetchBranchesFromSupabase = async () => {
 };
 
 /**
- * Fetch all employees from Supabase
+ * Fetch all employees from Supabase (including type: 'fulltime' | 'parttime')
  */
 export const fetchEmployeesFromSupabase = async () => {
   try {
@@ -42,7 +42,8 @@ export const fetchEmployeesFromSupabase = async () => {
       id: e.id,
       stt: e.stt,
       name: e.name,
-      branchId: e.branch_id
+      branchId: e.branch_id,
+      type: e.type || 'fulltime'
     }));
   } catch (err) {
     console.error('Error fetching employees:', err);
@@ -51,7 +52,7 @@ export const fetchEmployeesFromSupabase = async () => {
 };
 
 /**
- * Fetch all attendance for a month from Supabase
+ * Fetch all attendance for a month from Supabase (including Ca 2: start2, end2)
  */
 export const fetchAttendanceFromSupabase = async (year, month) => {
   const formattedMonthStr = String(month).padStart(2, '0');
@@ -74,7 +75,9 @@ export const fetchAttendanceFromSupabase = async (year, month) => {
       if (!attendanceMap[empId]) attendanceMap[empId] = {};
       attendanceMap[empId][dateKey] = {
         start: row.shift_start || '',
-        end: row.shift_end || ''
+        end: row.shift_end || '',
+        start2: row.shift_start_2 || row.start2 || '',
+        end2: row.shift_end_2 || row.end2 || ''
       };
     });
 
@@ -108,16 +111,18 @@ export const fetchUsersFromSupabase = async () => {
 };
 
 /**
- * Upsert a shift entry to Supabase
+ * Upsert a shift entry to Supabase (supporting Ca 1 & Ca 2)
  */
-export const saveShiftToSupabase = async (empId, dateKey, startVal, endVal) => {
+export const saveShiftToSupabase = async (empId, dateKey, startVal, endVal, start2Val = '', end2Val = '') => {
   const recordId = `${empId}_${dateKey}`;
   const { error } = await supabase.from('attendance').upsert({
     id: recordId,
     employee_id: empId,
     work_date: dateKey,
     shift_start: startVal,
-    shift_end: endVal
+    shift_end: endVal,
+    shift_start_2: start2Val,
+    shift_end_2: end2Val
   });
 
   if (error) {
@@ -133,7 +138,8 @@ export const saveEmployeeToSupabase = async (emp) => {
     id: emp.id,
     stt: emp.stt,
     name: emp.name,
-    branch_id: emp.branchId
+    branch_id: emp.branchId,
+    type: emp.type || 'fulltime'
   });
 
   if (error) console.error('Error saving employee to Supabase:', error);
