@@ -292,6 +292,8 @@ export default function App() {
         theme={theme}
         setTheme={setTheme}
         onLogout={handleLogout}
+        onUpdateUser={handleUpdateUser}
+        onUpdateEmployee={handleUpdateEmployee}
       />
     );
   }

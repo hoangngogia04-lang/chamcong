@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check } from 'lucide-react';
 import { getDaysInMonth } from '../utils/excelHelper';
 
 export default function PersonalEmployeePage({
@@ -13,7 +13,9 @@ export default function PersonalEmployeePage({
   branches = [],
   theme,
   setTheme,
-  onLogout
+  onLogout,
+  onUpdateUser,
+  onUpdateEmployee
 }) {
   const [selectedView, setSelectedView] = useState('list'); // 'list' | 'table'
 
@@ -28,6 +30,18 @@ export default function PersonalEmployeePage({
   };
 
   const branchObj = branches.find(b => b.id === employee.branchId) || { name: 'Chi Nhánh' };
+
+  // Profile Settings Modal States
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [editName, setEditName] = useState(employee?.name || currentUser?.fullName || '');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
+  const [profileErrorMsg, setProfileErrorMsg] = useState('');
+
+  useEffect(() => {
+    setEditName(employee?.name || currentUser?.fullName || '');
+  }, [employee, currentUser]);
 
   const daysInMonth = getDaysInMonth(year, month);
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -110,6 +124,48 @@ export default function PersonalEmployeePage({
     }
   };
 
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    setProfileErrorMsg('');
+    setProfileSuccessMsg('');
+
+    if (!editName.trim()) {
+      setProfileErrorMsg('Họ tên không được để trống!');
+      return;
+    }
+
+    if (newPassword && newPassword !== confirmPassword) {
+      setProfileErrorMsg('Mật khẩu mới và Nhập lại mật khẩu không khớp!');
+      return;
+    }
+
+    const updatedPass = newPassword.trim() ? newPassword.trim() : (currentUser?.password || '123');
+
+    // 1. Update User Profile
+    if (onUpdateUser && currentUser?.id) {
+      onUpdateUser(currentUser.id, {
+        fullName: editName.trim(),
+        password: updatedPass
+      });
+    }
+
+    // 2. Update Employee record name if linked
+    if (onUpdateEmployee && employee?.id) {
+      onUpdateEmployee(employee.id, {
+        name: editName.trim()
+      });
+    }
+
+    setProfileSuccessMsg('✅ Đã cập nhật Tên hiển thị và Mật khẩu thành công!');
+    setNewPassword('');
+    setConfirmPassword('');
+
+    setTimeout(() => {
+      setProfileSuccessMsg('');
+      setIsProfileModalOpen(false);
+    }, 1800);
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-main)', display: 'flex', flexDirection: 'column' }}>
       {/* Top Navbar */}
@@ -141,6 +197,16 @@ export default function PersonalEmployeePage({
               <ChevronRight size={16} />
             </button>
           </div>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsProfileModalOpen(true)}
+            title="Đổi tên hoặc mật khẩu cá nhân"
+            style={{ padding: '0.45rem 0.75rem', color: 'var(--accent-purple)', fontWeight: 600 }}
+          >
+            <Settings size={16} />
+            <span>Sửa Tài Khoản</span>
+          </button>
 
           <button
             className="btn btn-secondary"
@@ -213,20 +279,28 @@ export default function PersonalEmployeePage({
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setIsProfileModalOpen(true)}
+              className="btn btn-secondary"
+              style={{ fontSize: '0.85rem', padding: '0.5rem 0.85rem', color: 'var(--accent-purple)', fontWeight: 600 }}
+            >
+              <Edit3 size={15} />
+              <span>Đổi Tên / Mật Khẩu</span>
+            </button>
             <button
               onClick={() => setSelectedView('list')}
               className={`btn ${selectedView === 'list' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '0.85rem', padding: '0.5rem 0.85rem' }}
             >
-              📱 Dạng Danh Sách (Di Động)
+              📱 Dạng Danh Sách
             </button>
             <button
               onClick={() => setSelectedView('table')}
               className={`btn ${selectedView === 'table' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '0.85rem', padding: '0.5rem 0.85rem' }}
             >
-              📊 Dạng Bảng Matrix
+              📊 Dạng Matrix
             </button>
           </div>
         </div>
@@ -442,6 +516,98 @@ export default function PersonalEmployeePage({
         )}
 
       </main>
+
+      {/* Account Edit Modal */}
+      {isProfileModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsProfileModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Settings size={20} className="text-purple" />
+                <span>Chỉnh Sửa Tài Khoản Cá Nhân</span>
+              </h3>
+              <button className="modal-close" onClick={() => setIsProfileModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginTop: '0.5rem' }}>
+              {profileErrorMsg && (
+                <div style={{ padding: '0.75rem', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid var(--accent-rose)', color: 'var(--accent-rose)', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', fontWeight: 600 }}>
+                  ⚠️ {profileErrorMsg}
+                </div>
+              )}
+
+              {profileSuccessMsg && (
+                <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--accent-emerald)', color: 'var(--accent-emerald)', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', fontWeight: 600 }}>
+                  {profileSuccessMsg}
+                </div>
+              )}
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.88rem' }}>Tên Đăng Nhập (Username - Cố định):</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={`@${currentUser?.username}`}
+                  disabled
+                  style={{ opacity: 0.7, background: 'var(--bg-input)' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--accent-cyan)' }}>
+                  Họ & Tên Hiển Thị Nhân Viên:
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Nhập tên mới của bạn..."
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  style={{ fontSize: '0.95rem' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--accent-purple)' }}>
+                  Mật Khẩu Mới (Để trống nếu không đổi):
+                </label>
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Nhập mật khẩu mới..."
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                />
+              </div>
+
+              {newPassword && (
+                <div className="form-group">
+                  <label style={{ fontSize: '0.88rem' }}>Nhập Lại Mật Khẩu Mới:</label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    placeholder="Xác nhận lại mật khẩu mới..."
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="modal-footer" style={{ marginTop: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsProfileModalOpen(false)}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  <Check size={16} />
+                  <span>Lưu Thay Đổi</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
