@@ -1,12 +1,30 @@
 id,username,password_hash,full_name,role,branch_id,employee_id
-usr_admin,admin,admin123,Quản Trị Viên (Admin),admin,,
-usr_cn1,quanly_cn1,123,Quản lý Chi Nhánh 1 (Biên Hoà),manager,CN1,
-usr_cn2,quanly_cn2,123,Quản lý Chi Nhánh 2 (Long Thành),manager,CN2,
-usr_cn3,quanly_cn3,123,Quản lý Chi Nhánh 3 (Long Khánh),manager,CN3,
-usr_cn4,quanly_cn4,123,Quản lý Chi Nhánh 4 (Xuân Lộc),manager,CN4,
-usr_cn5,quanly_cn5,123,Quản lý Chi Nhánh 5 (Lê Duẩn),manager,CN5,
-usr_emp_1,hoangp,123,Hoàng(P),employee,CN1,emp_1
-usr_emp_2,trucanh,123,Trúc Anh,employee,CN1,emp_2
-usr_emp_3,van,123,Vân,employee,CN1,emp_3
-usr_emp_4,dung,123,Dung,employee,CN1,emp_4
-usr_emp_5,nhi,123,Nhi,employee,CN1,emp_5
+"usr_admin","admin","admin123","Quản Trị Viên (Admin)","admin","",""
+"usr_cn1","quanly_cn1","123","Quản lý Chi Nhánh 1 (Biên Hoà)","manager","CN1",""
+"usr_cn2","quanly_cn2","123","Quản lý Chi Nhánh 2 (Long Thành)","manager","CN2",""
+"usr_cn3","quanly_cn3","123","Quản lý Chi Nhánh 3 (Long Khánh)","manager","CN3",""
+"usr_cn4","quanly_cn4","123","Quản lý Chi Nhánh 4 (Xuân Lộc)","manager","CN4",""
+"usr_cn5","quanly_cn5","123","Quản lý Chi Nhánh 5 (Lê Duẩn)","manager","CN5",""
+"usr_emp_1","hoangp","123","Hoàng(P)","employee","CN5","emp_1"
+"usr_emp_2","trucanh","123","Trúc Anh","employee","CN1","emp_2"
+"usr_emp_3","van","123","Vân","employee","CN1","emp_3"
+"usr_emp_4","dung","123","Dung","employee","CN1","emp_4"
+"usr_emp_5","nhi","123","Nhi","employee","CN1","emp_5"
+"usr_emp_6","tranglt","123","Trang(LT)","employee","CN2","emp_6"
+"usr_emp_7","huynhlt","123","Huỳnh (LT)","employee","CN2","emp_7"
+"usr_emp_8","lanhlt","123","L.Anh (Lt)","employee","CN2","emp_8"
+"usr_emp_9","nhiem","123","Nhiệm","employee","CN1","emp_9"
+"usr_emp_10","han","123","Hân","employee","CN1","emp_10"
+"usr_emp_11","chau","123","Châu","employee","CN1","emp_11"
+"usr_emp_12","tuyen","123","Tuyền","employee","CN1","emp_12"
+"usr_emp_13","long","123","Long","employee","CN1","emp_13"
+"usr_emp_14","hang","123","Hằng","employee","CN1","emp_14"
+"usr_emp_15","diemlk","123","Diễm (LK)","employee","CN3","emp_15"
+"usr_emp_16","dat","123","Đạt","employee","CN1","emp_16"
+"usr_emp_17","ngoclk","123","Ngoc (LK)","employee","CN3","emp_17"
+"usr_emp_18","thaolk","123","Thao (LK)","employee","CN3","emp_18"
+"usr_emp_19","duonglk","123","Dương (LK)","employee","CN3","emp_19"
+"usr_emp_20","hoaxl","123","Hoa (XL)","employee","CN4","emp_20"
+"usr_emp_21","yxl","123","Ý  (XL)","employee","CN4","emp_21"
+"usr_emp_22","thixl","123","Thi (XL)","employee","CN4","emp_22"
+"usr_emp_23","myxl","123","MY (XL)","employee","CN4","emp_23"
