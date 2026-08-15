@@ -1,5 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, User, Check, CheckCircle2, Sparkles, Info, Lock, AlertCircle, RefreshCw } from 'lucide-react';
+import { Clock, Calendar, User, Check, CheckCircle2, Sparkles, Info, Lock, AlertCircle, RefreshCw, Calculator } from 'lucide-react';
+
+/**
+ * Calculates combined shift for Full-Time split shifts.
+ * Ca 1: 08:00 - 12:00 (4h), Ca 2: 17:00 - 22:00 (5h) => Total 9h => 08:00 - 17:00
+ */
+export function calculateFulltimeCombinedShift(start1, end1, start2, end2) {
+  if (!start1 || !end1) return { start: start1, end: end1, totalHours: '0' };
+  if (start1.toUpperCase() === 'OFF') return { start: 'OFF', end: '', totalHours: '0' };
+  if (!start2 || !end2) {
+    const [h1, m1] = start1.split(':').map(Number);
+    const [h2, m2] = end1.split(':').map(Number);
+    const dur = Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+    return { start: start1, end: end1, totalHours: (dur / 60).toFixed(1) };
+  }
+
+  function parseMinutes(tStr) {
+    if (!tStr || !tStr.includes(':')) return 0;
+    const [h, m] = tStr.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  function formatMinutes(mins) {
+    const h = Math.floor(mins / 60) % 24;
+    const m = mins % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  const mStart1 = parseMinutes(start1);
+  const mEnd1 = parseMinutes(end1);
+  const mStart2 = parseMinutes(start2);
+  const mEnd2 = parseMinutes(end2);
+
+  const dur1 = Math.max(0, mEnd1 - mStart1);
+  const dur2 = Math.max(0, mEnd2 - mStart2);
+  const totalMins = dur1 + dur2;
+
+  const mCombinedEnd = mStart1 + totalMins;
+  return {
+    start: start1,
+    end: formatMinutes(mCombinedEnd),
+    totalHours: (totalMins / 60).toFixed(1)
+  };
+}
 
 export default function ShiftEntryPage({
   year,
@@ -82,31 +125,19 @@ export default function ShiftEntryPage({
     { label: 'Ca Tối (13h - 22h)', start: '13:00', end: '22:00', icon: '🌙' },
     { label: 'Sáng Ngắn (8h - 13h)', start: '08:00', end: '13:00', icon: '🌅' },
     { label: 'Tối Ngắn (17h - 22h)', start: '17:00', end: '22:00', icon: '🌆' },
-    { label: 'Ca Gãy Part-Time (8h-13h & 17h-22h)', start: '08:00', end: '13:00', start2: '17:00', end2: '22:00', icon: '🔄' },
+    { label: 'Ca Gãy (8h-12h & 17h-22h)', start: '08:00', end: '12:00', start2: '17:00', end2: '22:00', icon: '🔄' },
+    { label: 'Ca Gãy (8h-13h & 17h-22h)', start: '08:00', end: '13:00', start2: '17:00', end2: '22:00', icon: '🔄' },
     { label: 'Nghỉ (OFF)', start: 'OFF', end: '', icon: '☕' }
   ];
 
   const handleApplyPreset = (p) => {
-    if (p.start2) {
-      if (isPartTime) {
-        setShiftStart(p.start);
-        setShiftEnd(p.end);
-        setShiftStart2(p.start2);
-        setShiftEnd2(p.end2);
-      } else {
-        // For Full-time: auto-combine split shifts into continuous span 08:00 - 18:00
-        setShiftStart('08:00');
-        setShiftEnd('18:00');
-        setShiftStart2('');
-        setShiftEnd2('');
-      }
-    } else {
-      setShiftStart(p.start);
-      setShiftEnd(p.end);
-      if (p.start === 'OFF') {
-        setShiftStart2('');
-        setShiftEnd2('');
-      }
+    setShiftStart(p.start);
+    setShiftEnd(p.end);
+    setShiftStart2(p.start2 || '');
+    setShiftEnd2(p.end2 || '');
+    if (p.start === 'OFF') {
+      setShiftStart2('');
+      setShiftEnd2('');
     }
     setErrorMsg('');
   };
@@ -149,6 +180,9 @@ export default function ShiftEntryPage({
     return clean;
   };
 
+  // Live calculation preview for Full-Time combined shift
+  const fulltimeCalc = calculateFulltimeCombinedShift(shiftStart, shiftEnd, shiftStart2, shiftEnd2);
+
   const handleSave = (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -170,12 +204,12 @@ export default function ShiftEntryPage({
     const formattedEnd2 = formatTimeOnBlur(shiftEnd2);
 
     if (!isValidTimeFormat(formattedStart)) {
-      setErrorMsg(`⚠️ Giờ lên ca "${shiftStart}" không đúng định dạng! Vui lòng nhập dạng 08:00 hoặc OFF.`);
+      setErrorMsg(`⚠️ Giờ lên ca 1 "${shiftStart}" không đúng định dạng! Vui lòng nhập dạng 08:00 hoặc OFF.`);
       return;
     }
 
     if (formattedStart.toUpperCase() !== 'OFF' && !isValidTimeFormat(formattedEnd)) {
-      setErrorMsg(`⚠️ Giờ xuống ca "${shiftEnd}" không đúng định dạng! Vui lòng nhập dạng 17:00.`);
+      setErrorMsg(`⚠️ Giờ xuống ca 1 "${shiftEnd}" không đúng định dạng! Vui lòng nhập dạng 17:00.`);
       return;
     }
 
@@ -189,27 +223,41 @@ export default function ShiftEntryPage({
       return;
     }
 
-    setShiftStart(formattedStart);
-    setShiftEnd(formattedEnd);
-    setShiftStart2(formattedStart2);
-    setShiftEnd2(formattedEnd2);
-
     const formattedDay = String(selectedDay).padStart(2, '0');
     const dateKey = `${year}-${formattedMonthStr}-${formattedDay}`;
 
-    onSaveShift(selectedEmpId, dateKey, formattedStart, formattedEnd, formattedStart2, formattedEnd2);
+    let saveStart1 = formattedStart;
+    let saveEnd1 = formattedEnd;
+    let saveStart2 = formattedStart2;
+    let saveEnd2 = formattedEnd2;
+
+    // For Full-time split shifts: auto-combine total hours into single shift on main table!
+    if (!isPartTime && formattedStart2 && formattedEnd2) {
+      const calc = calculateFulltimeCombinedShift(formattedStart, formattedEnd, formattedStart2, formattedEnd2);
+      saveStart1 = calc.start;
+      saveEnd1 = calc.end;
+    }
+
+    setShiftStart(saveStart1);
+    setShiftEnd(saveEnd1);
+    setShiftStart2(saveStart2);
+    setShiftEnd2(saveEnd2);
+
+    onSaveShift(selectedEmpId, dateKey, saveStart1, saveEnd1, saveStart2, saveEnd2);
 
     const empName = selectedEmp ? selectedEmp.name : 'Nhân viên';
-    let timeStr = formattedStart === 'OFF' ? 'Nghỉ (OFF)' : `${formattedStart} - ${formattedEnd}`;
-    if (formattedStart2 && formattedEnd2) {
-      timeStr += ` & Ca 2: ${formattedStart2} - ${formattedEnd2}`;
+    let timeStr = saveStart1 === 'OFF' ? 'Nghỉ (OFF)' : `${saveStart1} - ${saveEnd1}`;
+    if (!isPartTime && formattedStart2 && formattedEnd2) {
+      timeStr += ` (Tự động gộp từ 2 ca gãy: ${formattedStart}-${formattedEnd} & ${formattedStart2}-${formattedEnd2})`;
+    } else if (saveStart2 && saveEnd2) {
+      timeStr += ` & Ca 2: ${saveStart2} - ${saveEnd2}`;
     }
 
     setSuccessMsg(`✅ Đã lưu ca làm việc cho ${empName} (Ngày ${selectedDay}/${month}): ${timeStr}`);
 
     setTimeout(() => {
       setSuccessMsg('');
-    }, 3500);
+    }, 4500);
   };
 
   // Existing shift info for currently selected day
@@ -228,7 +276,7 @@ export default function ShiftEntryPage({
           <span>Trang Nhập Ca Làm Việc Cho Nhân Viên</span>
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-          Hỗ trợ phân loại <strong>👔 Full-Time (Gộp Ca)</strong> và <strong>⏱️ Part-Time (Ca Gãy 2 Ca)</strong>. Các ngày tương lai đã được khóa an toàn.
+          Hỗ trợ chọn ca gãy cho cả <strong>👔 Full-Time (Tự động tính gộp tổng giờ)</strong> và <strong>⏱️ Part-Time (Tách 2 ca độc lập)</strong>.
         </p>
       </div>
 
@@ -403,7 +451,7 @@ export default function ShiftEntryPage({
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.4rem' }}>
               {presets.map((p, idx) => {
-                const isCurrent = shiftStart === p.start && shiftEnd === p.end;
+                const isCurrent = shiftStart === p.start && shiftEnd === p.end && (p.start2 ? shiftStart2 === p.start2 : true);
                 return (
                   <button
                     type="button"
@@ -431,10 +479,10 @@ export default function ShiftEntryPage({
             </div>
           </div>
 
-          {/* Step 4: Time Inputs (Ca 1 & Ca 2 for Part-Time) */}
+          {/* Step 4: Time Inputs (Ca 1 & Ca 2) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-emerald)' }}>
-              {isPartTime ? '🟢 Ca 1 (Phần Trước Bảng):' : '🟢 Ca Làm Việc Full-Time:'}
+              🟢 Ca 1 (Ca Sáng / Ca Chính):
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
               <div className="form-group">
@@ -455,7 +503,7 @@ export default function ShiftEntryPage({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="VD: 13:00 hoặc 17:00"
+                  placeholder="VD: 12:00 hoặc 17:00"
                   value={shiftEnd}
                   onChange={(e) => setShiftEnd(e.target.value)}
                   onBlur={() => setShiftEnd(formatTimeOnBlur(shiftEnd))}
@@ -465,42 +513,64 @@ export default function ShiftEntryPage({
               </div>
             </div>
 
-            {/* If Part-Time, show Ca 2 inputs */}
-            {isPartTime && (
-              <>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-purple)', marginTop: '0.5rem' }}>
-                  🟣 Ca 2 / Ca Gãy Part-Time (Phần Sau Cột AI..BA Bảng Excel):
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label>Giờ Lên Ca 2 (HH:MM):</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="VD: 17:00"
-                      value={shiftStart2}
-                      onChange={(e) => setShiftStart2(e.target.value)}
-                      onBlur={() => setShiftStart2(formatTimeOnBlur(shiftStart2))}
-                      style={{ fontSize: '1rem', padding: '0.75rem' }}
-                    />
-                  </div>
+            {/* Ca 2 Inputs for Split Shifts */}
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-purple)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>🟣 Ca 2 / Ca Gãy (Chi tiết ca 2):</span>
+              {!isPartTime && shiftStart2 && shiftEnd2 && (
+                <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', background: 'rgba(6, 182, 212, 0.15)', padding: '0.2rem 0.6rem', borderRadius: 'var(--radius-md)' }}>
+                  💡 Gộp Full-time: <strong>{fulltimeCalc.start} - {fulltimeCalc.end}</strong> ({fulltimeCalc.totalHours} tiếng)
+                </span>
+              )}
+            </div>
 
-                  <div className="form-group">
-                    <label>Giờ Xuống Ca 2 (HH:MM):</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="VD: 22:00"
-                      value={shiftEnd2}
-                      onChange={(e) => setShiftEnd2(e.target.value)}
-                      onBlur={() => setShiftEnd2(formatTimeOnBlur(shiftEnd2))}
-                      style={{ fontSize: '1rem', padding: '0.75rem' }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Giờ Lên Ca 2 (HH:MM - Để trống nếu không làm ca 2):</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: 17:00"
+                  value={shiftStart2}
+                  onChange={(e) => setShiftStart2(e.target.value)}
+                  onBlur={() => setShiftStart2(formatTimeOnBlur(shiftStart2))}
+                  style={{ fontSize: '1rem', padding: '0.75rem' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Giờ Xuống Ca 2 (HH:MM):</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: 22:00"
+                  value={shiftEnd2}
+                  onChange={(e) => setShiftEnd2(e.target.value)}
+                  onBlur={() => setShiftEnd2(formatTimeOnBlur(shiftEnd2))}
+                  style={{ fontSize: '1rem', padding: '0.75rem' }}
+                />
+              </div>
+            </div>
           </div>
+
+          {/* Live Full-time Banner */}
+          {!isPartTime && shiftStart2 && shiftEnd2 && (
+            <div style={{
+              background: 'rgba(6, 182, 212, 0.12)',
+              border: '1px solid var(--accent-cyan)',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.9rem',
+              color: 'var(--text-main)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem'
+            }}>
+              <Calculator size={20} className="text-cyan" />
+              <span>
+                Hệ thống sẽ <strong>tự động tính tổng {fulltimeCalc.totalHours} tiếng</strong> và hiển thị ca gộp: <strong>{fulltimeCalc.start} - {fulltimeCalc.end}</strong> cho nhân viên Full-Time!
+              </span>
+            </div>
+          )}
 
           {/* Submit Action */}
           <button

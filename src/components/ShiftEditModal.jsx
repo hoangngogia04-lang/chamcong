@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Clock, Calendar, AlertCircle } from 'lucide-react';
+import { X, Check, Clock, Calendar, AlertCircle, Calculator } from 'lucide-react';
+import { calculateFulltimeCombinedShift } from '../pages/ShiftEntryPage';
 
 export default function ShiftEditModal({
   isOpen,
@@ -36,31 +37,20 @@ export default function ShiftEditModal({
     { label: 'Ca Sáng (8h - 17h)', start: '08:00', end: '17:00', icon: '☀️' },
     { label: 'Ca Tối (13h - 22h)', start: '13:00', end: '22:00', icon: '🌙' },
     { label: 'Sáng Ngắn (8h - 13h)', start: '08:00', end: '13:00', icon: '🌅' },
-    { label: 'Tối Ngắn (17h - 22h)', start: '17:00', end: '22:00', icon: '<ctrl42>' },
-    { label: 'Ca Gãy Part-Time (8h-13h & 17h-22h)', start: '08:00', end: '13:00', start2: '17:00', end2: '22:00', icon: '🔄' },
+    { label: 'Tối Ngắn (17h - 22h)', start: '17:00', end: '22:00', icon: '🌆' },
+    { label: 'Ca Gãy (8h-12h & 17h-22h)', start: '08:00', end: '12:00', start2: '17:00', end2: '22:00', icon: '🔄' },
+    { label: 'Ca Gãy (8h-13h & 17h-22h)', start: '08:00', end: '13:00', start2: '17:00', end2: '22:00', icon: '🔄' },
     { label: 'Nghỉ (OFF)', start: 'OFF', end: '', icon: '☕' }
   ];
 
   const handlePresetClick = (p) => {
-    if (p.start2) {
-      if (isPartTime) {
-        setStart(p.start);
-        setEnd(p.end);
-        setStart2(p.start2);
-        setEnd2(p.end2);
-      } else {
-        setStart('08:00');
-        setEnd('18:00');
-        setStart2('');
-        setEnd2('');
-      }
-    } else {
-      setStart(p.start);
-      setEnd(p.end);
-      if (p.start === 'OFF') {
-        setStart2('');
-        setEnd2('');
-      }
+    setStart(p.start);
+    setEnd(p.end);
+    setStart2(p.start2 || '');
+    setEnd2(p.end2 || '');
+    if (p.start === 'OFF') {
+      setStart2('');
+      setEnd2('');
     }
     setErrorMsg('');
   };
@@ -103,6 +93,9 @@ export default function ShiftEditModal({
     return clean;
   };
 
+  // Live calculation preview for Full-Time combined shift
+  const fulltimeCalc = calculateFulltimeCombinedShift(start, end, start2, end2);
+
   const handleSave = (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -132,7 +125,19 @@ export default function ShiftEditModal({
       return;
     }
 
-    onSave(employee.id, dateKey, formattedStart, formattedEnd, formattedStart2, formattedEnd2);
+    let saveStart1 = formattedStart;
+    let saveEnd1 = formattedEnd;
+    let saveStart2 = formattedStart2;
+    let saveEnd2 = formattedEnd2;
+
+    // For Full-time split shifts: auto-combine total hours into single shift on main table!
+    if (!isPartTime && formattedStart2 && formattedEnd2) {
+      const calc = calculateFulltimeCombinedShift(formattedStart, formattedEnd, formattedStart2, formattedEnd2);
+      saveStart1 = calc.start;
+      saveEnd1 = calc.end;
+    }
+
+    onSave(employee.id, dateKey, saveStart1, saveEnd1, saveStart2, saveEnd2);
     onClose();
   };
 
@@ -162,7 +167,7 @@ export default function ShiftEditModal({
             </span>
 
             <span className={`shift-tag ${isPartTime ? 'shift-afternoon' : 'shift-morning'}`}>
-              {isPartTime ? '⏱️ Part-Time (Ca Gãy)' : '👔 Full-Time'}
+              {isPartTime ? '⏱️ Part-Time (Ca Gãy)' : '👔 Full-Time (Chính thức)'}
             </span>
           </div>
 
@@ -216,7 +221,7 @@ export default function ShiftEditModal({
           {/* Ca 1 Inputs */}
           <div>
             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-emerald)', marginBottom: '0.4rem' }}>
-              {isPartTime ? '🟢 Ca 1 (Phần Trước):' : '🟢 Giờ Ca Làm:'}
+              {isPartTime ? '🟢 Ca 1 (Phần Trước):' : '🟢 Ca 1 / Ca Sáng:'}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
@@ -237,7 +242,7 @@ export default function ShiftEditModal({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="VD: 13:00"
+                  placeholder="VD: 12:00"
                   value={end}
                   onChange={(e) => setEnd(e.target.value)}
                   onBlur={() => setEnd(formatTimeOnBlur(end))}
@@ -247,37 +252,60 @@ export default function ShiftEditModal({
             </div>
           </div>
 
-          {/* Ca 2 Inputs for Part-Time */}
-          {isPartTime && (
-            <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-purple)', marginBottom: '0.4rem' }}>
-                🟣 Ca 2 / Ca Gãy Part-Time (Phần Sau Cột AI..BA):
+          {/* Ca 2 Inputs */}
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-purple)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>🟣 Ca 2 / Ca Gãy:</span>
+              {!isPartTime && start2 && end2 && (
+                <span style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)' }}>
+                  💡 Gộp: <strong>{fulltimeCalc.start} - {fulltimeCalc.end}</strong> ({fulltimeCalc.totalHours}h)
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '0.82rem' }}>Giờ Lên Ca 2 (Tùy chọn):</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: 17:00"
+                  value={start2}
+                  onChange={(e) => setStart2(e.target.value)}
+                  onBlur={() => setStart2(formatTimeOnBlur(start2))}
+                />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.82rem' }}>Giờ Lên Ca 2:</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="VD: 17:00"
-                    value={start2}
-                    onChange={(e) => setStart2(e.target.value)}
-                    onBlur={() => setStart2(formatTimeOnBlur(start2))}
-                  />
-                </div>
 
-                <div className="form-group">
-                  <label style={{ fontSize: '0.82rem' }}>Giờ Xuống Ca 2:</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="VD: 22:00"
-                    value={end2}
-                    onChange={(e) => setEnd2(e.target.value)}
-                    onBlur={() => setEnd2(formatTimeOnBlur(end2))}
-                  />
-                </div>
+              <div className="form-group">
+                <label style={{ fontSize: '0.82rem' }}>Giờ Xuống Ca 2:</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="VD: 22:00"
+                  value={end2}
+                  onChange={(e) => setEnd2(e.target.value)}
+                  onBlur={() => setEnd2(formatTimeOnBlur(end2))}
+                />
               </div>
+            </div>
+          </div>
+
+          {/* Live Full-time Banner */}
+          {!isPartTime && start2 && end2 && (
+            <div style={{
+              background: 'rgba(6, 182, 212, 0.12)',
+              border: '1px solid var(--accent-cyan)',
+              padding: '0.6rem 0.85rem',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.82rem',
+              color: 'var(--text-main)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <Calculator size={18} className="text-cyan" />
+              <span>
+                Full-Time tự động tính <strong>tổng {fulltimeCalc.totalHours} tiếng</strong> ➔ Gộp ca: <strong>{fulltimeCalc.start} - {fulltimeCalc.end}</strong>
+              </span>
             </div>
           )}
 
