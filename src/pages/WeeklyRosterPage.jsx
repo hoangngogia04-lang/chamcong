@@ -79,11 +79,32 @@ export default function WeeklyRosterPage({
 
         {/* Month / Year & Week Picker */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {/* Month / Year */}
+          {/* Interactive Month & Year Selectors */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-input)', padding: '0.35rem 0.6rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              Tháng {month} / {year}
-            </span>
+            <Calendar size={16} className="text-cyan" />
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Tháng:</span>
+            <select
+              className="form-control"
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+              style={{ padding: '0.25rem 0.5rem', fontSize: '0.9rem', fontWeight: 700, width: 'auto' }}
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>Tháng {m}</option>
+              ))}
+            </select>
+
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginLeft: '0.3rem' }}>Năm:</span>
+            <select
+              className="form-control"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              style={{ padding: '0.25rem 0.5rem', fontSize: '0.9rem', fontWeight: 700, width: 'auto' }}
+            >
+              {[2024, 2025, 2026, 2027, 2028].map((y) => (
+                <option key={y} value={y}>Năm {y}</option>
+              ))}
+            </select>
           </div>
 
           {/* Week Buttons (Tuần 1 .. Tuần 5) */}
