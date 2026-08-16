@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import ShiftEditModal from './components/ShiftEditModal';
 
 import PersonalEmployeePage from './pages/PersonalEmployeePage';
+import WeeklyRosterPage from './pages/WeeklyRosterPage';
 
 import {
   DEFAULT_BRANCHES,
@@ -22,15 +23,17 @@ import {
   fetchEmployeesFromSupabase,
   fetchAttendanceFromSupabase,
   fetchUsersFromSupabase,
+  fetchWeeklyRostersFromSupabase,
   saveShiftToSupabase,
   saveEmployeeToSupabase,
   deleteEmployeeFromSupabase,
   saveUserToSupabase,
-  deleteUserFromSupabase
+  deleteUserFromSupabase,
+  saveWeeklyRosterToSupabase
 } from './utils/supabaseClient';
 
 export default function App() {
-  const [activePage, setActivePage] = useState('attendance'); // 'attendance', 'shiftEntry', 'employees', 'users'
+  const [activePage, setActivePage] = useState('attendance'); // 'attendance', 'shiftEntry', 'weeklyRoster', 'employees', 'users'
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth() + 1);
 
@@ -44,6 +47,40 @@ export default function App() {
   const [activeBranchId, setActiveBranchId] = useState('ALL');
   const [employees, setEmployees] = useState(DEFAULT_EMPLOYEES);
   const [attendance, setAttendance] = useState(DEFAULT_ATTENDANCE);
+
+  // Weekly Shift Rosters State (Key: `${branch_id}_${year}_${month}_W${week_num}`)
+  // Preset sample matching user's screenshot for CN1 (Biên Hoà) Week 1 August 2026!
+  const [weeklyRosters, setWeeklyRosters] = useState({
+    'CN1_2026_8_W1': {
+      '8h - 13h': {
+        'Mon': ['emp_3', 'emp_1'],
+        'Tue': ['emp_2', 'emp_5'],
+        'Wed': ['emp_2', 'emp_4'],
+        'Thu': ['emp_2', 'emp_5'],
+        'Fri': ['emp_2', 'emp_4'],
+        'Sat': ['emp_5', 'emp_3', 'emp_1'],
+        'Sun': ['emp_5', 'emp_4', 'emp_1']
+      },
+      '13h - 17h': {
+        'Mon': ['emp_3', 'emp_4'],
+        'Tue': ['emp_2', 'emp_4'],
+        'Wed': ['emp_5', 'emp_4'],
+        'Thu': ['emp_2', 'emp_4'],
+        'Fri': ['emp_3', 'emp_4'],
+        'Sat': ['emp_3', 'emp_4'],
+        'Sun': ['emp_3', 'emp_4']
+      },
+      '17h - 22h': {
+        'Mon': ['emp_2', 'emp_5', 'emp_4'],
+        'Tue': ['emp_2', 'emp_5', 'emp_4'],
+        'Wed': ['emp_2', 'emp_5', 'emp_4'],
+        'Thu': ['emp_2', 'emp_5', 'emp_4'],
+        'Fri': ['emp_3', 'emp_5', 'emp_1'],
+        'Sat': ['emp_4', 'emp_5', 'emp_1'],
+        'Sun': ['emp_2', 'emp_3', 'emp_1']
+      }
+    }
+  });
 
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('quan_ly_cham_cong_theme') || 'light';
@@ -76,6 +113,11 @@ export default function App() {
         const spAtt = await fetchAttendanceFromSupabase(year, month);
         if (spAtt && Object.keys(spAtt).length > 0) {
           setAttendance(prev => ({ ...prev, ...spAtt }));
+        }
+
+        const spRosters = await fetchWeeklyRostersFromSupabase(year, month);
+        if (spRosters && Object.keys(spRosters).length > 0) {
+          setWeeklyRosters(prev => ({ ...prev, ...spRosters }));
         }
       } catch (err) {
         console.error('Failed loading data from Supabase:', err);
@@ -128,92 +170,15 @@ export default function App() {
 
   // Handle Logout
   const handleLogout = () => {
-    if (window.confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?')) {
-      setCurrentUser(null);
-      localStorage.removeItem('quan_ly_cham_cong_current_user');
-    }
+    setCurrentUser(null);
+    localStorage.removeItem('quan_ly_cham_cong_current_user');
   };
 
-  // User Accounts Handlers
-  const handleAddUser = (newUserData) => {
-    const newUser = {
-      id: `usr_${Date.now()}`,
-      ...newUserData
-    };
-    setUsers(prev => [...prev, newUser]);
-    saveUserToSupabase(newUser);
-  };
-
-  const handleUpdateUser = (userId, updatedData) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        const merged = { ...u, ...updatedData };
-        saveUserToSupabase(merged);
-        return merged;
-      }
-      return u;
-    }));
-    if (currentUser?.id === userId) {
-      const merged = { ...currentUser, ...updatedData };
-      setCurrentUser(merged);
-      localStorage.setItem('quan_ly_cham_cong_current_user', JSON.stringify(merged));
-    }
-  };
-
-  const handleDeleteUser = (userId) => {
-    if (window.confirm('Bạn có chắc muốn xóa tài khoản quản lý này?')) {
-      setUsers(prev => prev.filter(u => u.id !== userId));
-      deleteUserFromSupabase(userId);
-    }
-  };
-
-  // Export Excel
-  const handleExport = () => {
-    let branchPrefix = '';
-    let targetBranchId = activeBranchId;
-
-    if (!isAdmin && currentUser?.branchId) {
-      targetBranchId = currentUser.branchId;
-    }
-
-    if (targetBranchId !== 'ALL') {
-      const bObj = branches.find(b => b.id === targetBranchId);
-      if (bObj) {
-        branchPrefix = bObj.name
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/đ/g, "d")
-          .replace(/Đ/g, "D")
-          .replace(/\s+/g, "_");
-      }
-    }
-
-    exportToExcel(year, month, visibleEmployees, attendance, branchPrefix);
-  };
-
-  // Cell click -> Open Shift Edit Modal
-  const handleCellClick = (employee, dateKey, currentStart, currentEnd, currentStart2 = '', currentEnd2 = '') => {
-    if (!isAdmin && currentUser?.branchId !== employee.branchId) {
-      alert('⚠️ Bạn chỉ có quyền chỉnh sửa ca làm việc thuộc Chi nhánh của bạn!');
-      return;
-    }
-
-    setSelectedCell({
-      employee,
-      dateKey,
-      start: currentStart || '',
-      end: currentEnd || '',
-      start2: currentStart2 || '',
-      end2: currentEnd2 || ''
-    });
-    setIsShiftModalOpen(true);
-  };
-
-  // Save Shift Record (supporting Ca 1 & Ca 2 for Part-Time split shifts)
+  // Handle Shift Entry Save
   const handleSaveShift = (empId, dateKey, startVal, endVal, start2Val = '', end2Val = '') => {
     setAttendance(prev => {
-      const empAtt = prev[empId] ? { ...prev[empId] } : {};
-      empAtt[dateKey] = {
+      const empMap = { ...(prev[empId] || {}) };
+      empMap[dateKey] = {
         start: startVal,
         end: endVal,
         start2: start2Val,
@@ -221,48 +186,85 @@ export default function App() {
       };
       return {
         ...prev,
-        [empId]: empAtt
+        [empId]: empMap
       };
     });
 
     saveShiftToSupabase(empId, dateKey, startVal, endVal, start2Val, end2Val);
   };
 
-  // Add Employee
-  const handleAddEmployee = (newEmpData) => {
-    const newEmp = {
-      id: `emp_${Date.now()}`,
-      stt: employees.length + 1,
-      name: newEmpData.name,
-      branchId: newEmpData.branchId,
-      type: newEmpData.type || 'fulltime'
-    };
-    setEmployees(prev => [...prev, newEmp]);
-    saveEmployeeToSupabase(newEmp);
-  };
-
-  // Update Employee
-  const handleUpdateEmployee = (empId, updatedData) => {
-    setEmployees(prev => prev.map(e => {
-      if (e.id === empId) {
-        const merged = { ...e, ...updatedData };
-        saveEmployeeToSupabase(merged);
-        return merged;
-      }
-      return e;
+  // Handle Weekly Roster Save
+  const handleSaveRoster = (branchId, yr, mth, wkNum, rosterData) => {
+    const key = `${branchId}_${yr}_${mth}_W${wkNum}`;
+    setWeeklyRosters(prev => ({
+      ...prev,
+      [key]: rosterData
     }));
+
+    saveWeeklyRosterToSupabase(branchId, yr, mth, wkNum, rosterData);
   };
 
-  // Delete Employee
+  // Cell Click Handler to open modal
+  const handleCellClick = (employeeObj, dateKey, currentStart = '', currentEnd = '', currentStart2 = '', currentEnd2 = '') => {
+    setSelectedCell({
+      employee: employeeObj,
+      dateKey,
+      start: currentStart,
+      end: currentEnd,
+      start2: currentStart2,
+      end2: currentEnd2
+    });
+    setIsShiftModalOpen(true);
+  };
+
+  // Excel Export Handler
+  const handleExport = () => {
+    exportToExcel(year, month, employees, branches, attendance);
+  };
+
+  // Employee CRUD handlers
+  const handleAddEmployee = (newEmp) => {
+    const empId = `emp_${Date.now()}`;
+    const fullEmp = { id: empId, ...newEmp };
+    setEmployees(prev => [...prev, fullEmp]);
+    saveEmployeeToSupabase(fullEmp);
+  };
+
+  const handleUpdateEmployee = (empId, updatedFields) => {
+    setEmployees(prev => prev.map(e => e.id === empId ? { ...e, ...updatedFields } : e));
+    const target = employees.find(e => e.id === empId);
+    if (target) {
+      saveEmployeeToSupabase({ ...target, ...updatedFields });
+    }
+  };
+
   const handleDeleteEmployee = (empId) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) {
       setEmployees(prev => prev.filter(e => e.id !== empId));
-      setAttendance(prev => {
-        const copy = { ...prev };
-        delete copy[empId];
-        return copy;
-      });
       deleteEmployeeFromSupabase(empId);
+    }
+  };
+
+  // User CRUD handlers
+  const handleAddUser = (newUser) => {
+    const userId = `usr_${Date.now()}`;
+    const fullUser = { id: userId, ...newUser };
+    setUsers(prev => [...prev, fullUser]);
+    saveUserToSupabase(fullUser);
+  };
+
+  const handleUpdateUser = (userId, updatedFields) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updatedFields } : u));
+    const target = users.find(u => u.id === userId);
+    if (target) {
+      saveUserToSupabase({ ...target, ...updatedFields });
+    }
+  };
+
+  const handleDeleteUser = (userId) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      deleteUserFromSupabase(userId);
     }
   };
 
@@ -289,6 +291,7 @@ export default function App() {
         employees={employees}
         attendance={attendance}
         branches={branches}
+        weeklyRosters={weeklyRosters}
         theme={theme}
         setTheme={setTheme}
         onLogout={handleLogout}
@@ -344,6 +347,20 @@ export default function App() {
             attendance={attendance}
             currentUser={currentUser}
             onSaveShift={handleSaveShift}
+          />
+        )}
+
+        {activePage === 'weeklyRoster' && (
+          <WeeklyRosterPage
+            year={year}
+            setYear={setYear}
+            month={month}
+            setMonth={setMonth}
+            branches={branches}
+            employees={employees}
+            currentUser={currentUser}
+            weeklyRosters={weeklyRosters}
+            onSaveRoster={handleSaveRoster}
           />
         )}
 

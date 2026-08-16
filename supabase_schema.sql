@@ -70,3 +70,14 @@ INSERT INTO public.user_profiles (id, username, password_hash, full_name, role, 
   ('usr_cn4', 'quanly_cn4', '123456', 'Quản lý Chi Nhánh 4', 'manager', 'CN4'),
   ('usr_cn5', 'quanly_cn5', '123456', 'Quản lý Chi Nhánh 5', 'manager', 'CN5')
 ON CONFLICT (username) DO NOTHING;
+
+-- 5. Tạo bảng Bảng Sắp Ca Theo Tuần (Weekly Shift Rosters)
+CREATE TABLE IF NOT EXISTS public.weekly_rosters (
+    id TEXT PRIMARY KEY, -- Dạng CN1_2026_8_W1
+    branch_id TEXT REFERENCES public.branches(id) ON DELETE CASCADE,
+    year INT NOT NULL,
+    month INT NOT NULL,
+    week_num INT NOT NULL,
+    roster_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);

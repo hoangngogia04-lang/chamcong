@@ -111,6 +111,15 @@ export default function Navbar({
         </button>
 
         <button
+          className={`branch-tab ${activePage === 'weeklyRoster' ? 'active' : ''}`}
+          onClick={() => setActivePage('weeklyRoster')}
+          style={{ fontSize: '0.9rem', padding: '0.65rem 1.1rem' }}
+        >
+          <Calendar size={18} />
+          <span>📅 Bảng Sắp Ca Tuần</span>
+        </button>
+
+        <button
           className={`branch-tab ${activePage === 'employees' ? 'active' : ''}`}
           onClick={() => setActivePage('employees')}
           style={{ fontSize: '0.9rem', padding: '0.65rem 1.1rem' }}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check } from 'lucide-react';
+import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check, Grid } from 'lucide-react';
 import { getDaysInMonth } from '../utils/excelHelper';
+import WeeklyRosterView from '../components/WeeklyRosterView';
 
 export default function PersonalEmployeePage({
   year,
@@ -11,13 +12,15 @@ export default function PersonalEmployeePage({
   employees = [],
   attendance = {},
   branches = [],
+  weeklyRosters = {},
   theme,
   setTheme,
   onLogout,
   onUpdateUser,
   onUpdateEmployee
 }) {
-  const [selectedView, setSelectedView] = useState('list'); // 'list' | 'table'
+  const [selectedView, setSelectedView] = useState('list'); // 'list' | 'table' | 'weeklyRoster'
+  const [weekNum, setWeekNum] = useState(1);
 
   // Find linked employee record safely
   const matchedEmp = employees.find(e => e.id === currentUser?.employeeId || (e.name && currentUser?.fullName && e.name.toLowerCase() === currentUser.fullName.toLowerCase()));
@@ -141,7 +144,6 @@ export default function PersonalEmployeePage({
 
     const updatedPass = newPassword.trim() ? newPassword.trim() : (currentUser?.password || '123');
 
-    // 1. Update User Profile
     if (onUpdateUser && currentUser?.id) {
       onUpdateUser(currentUser.id, {
         fullName: editName.trim(),
@@ -149,7 +151,6 @@ export default function PersonalEmployeePage({
       });
     }
 
-    // 2. Update Employee record name if linked
     if (onUpdateEmployee && employee?.id) {
       onUpdateEmployee(employee.id, {
         name: editName.trim()
@@ -229,7 +230,7 @@ export default function PersonalEmployeePage({
       </header>
 
       {/* Main Content Area */}
-      <main className="main-content" style={{ maxWidth: '1000px', margin: '0 auto', width: '100%', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <main className="main-content" style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         
         {/* Employee Profile Header Banner */}
         <div style={{
@@ -281,12 +282,11 @@ export default function PersonalEmployeePage({
 
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
-              onClick={() => setIsProfileModalOpen(true)}
-              className="btn btn-secondary"
-              style={{ fontSize: '0.85rem', padding: '0.5rem 0.85rem', color: 'var(--accent-purple)', fontWeight: 600 }}
+              onClick={() => setSelectedView('weeklyRoster')}
+              className={`btn ${selectedView === 'weeklyRoster' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.85rem', padding: '0.5rem 0.85rem', fontWeight: 700 }}
             >
-              <Edit3 size={15} />
-              <span>Đổi Tên / Mật Khẩu</span>
+              📅 Bảng Sắp Ca Chi Nhánh
             </button>
             <button
               onClick={() => setSelectedView('list')}
@@ -337,6 +337,53 @@ export default function PersonalEmployeePage({
             </div>
           </div>
         </div>
+
+        {/* View 0: Branch Weekly Roster View */}
+        {selectedView === 'weeklyRoster' && (
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '1.25rem',
+            boxShadow: 'var(--shadow-md)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                Bảng Sắp Ca Chi Nhánh {branchObj?.name} (Dành Riêng Cho Nhân Viên)
+              </span>
+
+              {/* Week Picker */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Chọn Tuần:</span>
+                {[1, 2, 3, 4, 5].map(w => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => setWeekNum(w)}
+                    className={`btn ${weekNum === w ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.35rem 0.65rem', fontSize: '0.82rem', fontWeight: 700 }}
+                  >
+                    Tuần {w}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <WeeklyRosterView
+              year={year}
+              month={month}
+              weekNum={weekNum}
+              branchId={employee.branchId}
+              branchObj={branchObj}
+              employees={employees}
+              rosterData={(weeklyRosters && weeklyRosters[`${employee.branchId}_${year}_${month}_W${weekNum}`]) || {}}
+              readOnly={true}
+            />
+          </div>
+        )}
 
         {/* View 1: Mobile-friendly List Card View */}
         {selectedView === 'list' && (

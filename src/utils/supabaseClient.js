@@ -178,3 +178,48 @@ export const deleteUserFromSupabase = async (userId) => {
   const { error } = await supabase.from('user_profiles').delete().eq('id', userId);
   if (error) console.error('Error deleting user from Supabase:', error);
 };
+
+/**
+ * Fetch all weekly shift rosters for a given month/year from Supabase
+ */
+export const fetchWeeklyRostersFromSupabase = async (year, month) => {
+  try {
+    const { data, error } = await supabase
+      .from('weekly_rosters')
+      .select('*')
+      .eq('year', year)
+      .eq('month', month);
+
+    if (error || !data || data.length === 0) return null;
+
+    const rostersMap = {};
+    data.forEach(row => {
+      const key = `${row.branch_id}_${row.year}_${row.month}_W${row.week_num}`;
+      rostersMap[key] = row.roster_data || {};
+    });
+
+    return rostersMap;
+  } catch (err) {
+    console.error('Error fetching weekly rosters from Supabase:', err);
+    return null;
+  }
+};
+
+/**
+ * Save / Upsert a weekly shift roster entry to Supabase
+ */
+export const saveWeeklyRosterToSupabase = async (branchId, year, month, weekNum, rosterData) => {
+  const recordId = `${branchId}_${year}_${month}_W${weekNum}`;
+  const { error } = await supabase.from('weekly_rosters').upsert({
+    id: recordId,
+    branch_id: branchId,
+    year: parseInt(year, 10),
+    month: parseInt(month, 10),
+    week_num: parseInt(weekNum, 10),
+    roster_data: rosterData
+  });
+
+  if (error) {
+    console.error('Error saving weekly roster to Supabase:', error);
+  }
+};
