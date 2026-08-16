@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Users, Plus, Trash2, Check, X, Edit3, Shield, Clock } from 'lucide-react';
+import { Calendar, Users, Plus, Trash2, Check, X, Edit3, Shield, Clock, RotateCcw } from 'lucide-react';
 import { getWeekDaysForMonthAndWeek } from '../utils/dateUtils';
 
 export default function WeeklyRosterView({
@@ -109,9 +109,34 @@ export default function WeeklyRosterView({
     setEditingSlot(null);
   };
 
+  // Action 1: Clear Entire Week Roster
+  const handleClearEntireWeek = () => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa TOÀN BỘ lịch ca của Tuần ${weekNum} (Chi nhánh ${branchObj?.name || branchId}) không?`)) {
+      const emptyRoster = {
+        '8h - 13h': {},
+        '13h - 17h': {},
+        '17h - 22h': {}
+      };
+      onSaveRoster(branchId, year, month, weekNum, emptyRoster);
+    }
+  };
+
+  // Action 2: Clear Specific Day Roster
+  const handleClearDay = (e, dayKey, dayTitle) => {
+    e.stopPropagation();
+    if (window.confirm(`Bạn có muốn xóa toàn bộ ca làm trong ngày ${dayTitle}?`)) {
+      const newRosterData = { ...effectiveRosterData };
+      shiftSlots.forEach(s => {
+        if (!newRosterData[s.key]) newRosterData[s.key] = {};
+        newRosterData[s.key][dayKey] = [];
+      });
+      onSaveRoster(branchId, year, month, weekNum, newRosterData);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
-      {/* Roster Header Title */}
+      {/* Roster Header Title & Action Buttons */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <Calendar size={22} className="text-cyan" />
@@ -126,9 +151,22 @@ export default function WeeklyRosterView({
           </span>
 
           {!readOnly && (
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-              💡 Nhấp vào ô để xếp/sửa ca
-            </span>
+            <button
+              type="button"
+              onClick={handleClearEntireWeek}
+              className="btn btn-secondary"
+              style={{
+                fontSize: '0.82rem',
+                padding: '0.35rem 0.75rem',
+                color: 'var(--accent-rose)',
+                borderColor: 'rgba(244, 63, 94, 0.4)',
+                fontWeight: 700
+              }}
+              title="Xóa trắng toàn bộ phân ca của Tuần này"
+            >
+              <Trash2 size={15} />
+              <span>Xóa Lịch Ca Tuần Này</span>
+            </button>
           )}
         </div>
       </div>
@@ -140,20 +178,44 @@ export default function WeeklyRosterView({
             <tr>
               {/* Top Left Empty Cell - Fixed Sticky */}
               <th style={{ width: '105px', minWidth: '105px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', position: 'sticky', left: 0, zIndex: 20, boxShadow: '3px 0 8px rgba(0,0,0,0.15)' }}></th>
-              {/* Day Headers with Specific Dates */}
+              {/* Day Headers with Specific Dates & Clear Day Button */}
               {daysList.map(d => (
                 <th
                   key={d.key}
                   style={{
                     background: d.isWeekend ? 'rgba(244, 63, 94, 0.12)' : 'var(--bg-input)',
                     color: d.isWeekend ? 'var(--accent-rose)' : 'var(--text-main)',
-                    padding: '0.75rem 0.5rem',
+                    padding: '0.65rem 0.5rem',
                     textAlign: 'center',
                     border: '1px solid var(--border-color)',
-                    minWidth: '115px'
+                    minWidth: '120px',
+                    position: 'relative'
                   }}
                 >
-                  <div style={{ fontSize: '0.98rem', fontWeight: 700 }}>{d.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                    <span style={{ fontSize: '0.98rem', fontWeight: 700 }}>{d.label}</span>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleClearDay(e, d.key, d.fullTitle)}
+                        title={`Xóa tất cả ca làm của ${d.fullTitle}`}
+                        style={{
+                          background: 'transparent',
+                          color: 'var(--text-dim)',
+                          border: 'none',
+                          padding: '2px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          borderRadius: '4px'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-rose)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+
                   {d.dateStr ? (
                     <div style={{ fontSize: '0.78rem', fontWeight: 600, opacity: 0.85, marginTop: '2px', color: d.isWeekend ? 'var(--accent-rose)' : 'var(--accent-cyan)' }}>
                       ({d.dateStr})
@@ -267,9 +329,35 @@ export default function WeeklyRosterView({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.75rem' }}>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
-                Chọn nhân viên của <strong>{branchObj?.name}</strong> cho ca <strong>{editingSlot.slotKey}</strong> vào <strong>{editingSlot.dayName}</strong>:
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Chọn nhân viên làm ca <strong>{editingSlot.slotKey}</strong>:
+                </p>
+
+                {selectedEmpIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEmpIds([])}
+                    style={{
+                      fontSize: '0.78rem',
+                      color: 'var(--accent-rose)',
+                      background: 'rgba(244, 63, 94, 0.12)',
+                      border: '1px solid rgba(244, 63, 94, 0.3)',
+                      padding: '0.25rem 0.55rem',
+                      borderRadius: 'var(--radius-sm)',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}
+                    title="Xóa bỏ chọn tất cả nhân viên trong ô ca này"
+                  >
+                    <RotateCcw size={12} />
+                    <span>Xóa trắng ô này</span>
+                  </button>
+                )}
+              </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '0.25rem' }}>
                 {branchEmployees.length === 0 ? (
