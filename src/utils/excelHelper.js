@@ -294,6 +294,18 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
   ws['!merges'] = merges;
   ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: totalMaxCols } });
 
+  // Freeze Columns A, B, C (STT, TÊN, CA) & Top 4 Header Rows
+  // Helps fixed columns A, B, C stay pinned on screen when scrolling horizontally
+  ws['!views'] = [
+    {
+      state: 'frozen',
+      xSplit: 3,
+      ySplit: 4,
+      topLeftCell: 'D5',
+      activePane: 'bottomRight'
+    }
+  ];
+
   // Column Widths
   const colWidths = [
     { wch: 6 },  // STT
