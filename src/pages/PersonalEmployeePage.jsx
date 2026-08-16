@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check, Grid, Globe } from 'lucide-react';
 import { getDaysInMonth } from '../utils/excelHelper';
 import { getCurrentWeekOfMonth } from '../utils/dateUtils';
+import { calculateEmployeeMonthlyStats } from '../utils/calcUtils';
+import { translations } from '../utils/language';
 import WeeklyRosterView from '../components/WeeklyRosterView';
 
 export default function PersonalEmployeePage({
@@ -68,42 +70,8 @@ export default function PersonalEmployeePage({
 
   const isPartTime = (employee?.type || 'fulltime') === 'parttime';
 
-  // Calculate monthly stats for this employee
-  const empAttMap = (attendance && attendance[employee.id]) || {};
-  let totalWorkingDays = 0;
-  let totalOffDays = 0;
-  let totalMinutesWorked = 0;
-
-  daysArray.forEach(day => {
-    const dayStr = String(day).padStart(2, '0');
-    const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
-    const rec = empAttMap[dateKey];
-
-    if (rec && rec.start) {
-      if (rec.start === 'OFF') {
-        totalOffDays++;
-      } else {
-        totalWorkingDays++;
-
-        // Calculate hours
-        if (rec.start && rec.end && rec.start.includes(':') && rec.end.includes(':')) {
-          const [h1, m1] = rec.start.split(':').map(Number);
-          const [h2, m2] = rec.end.split(':').map(Number);
-          const dur1 = Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
-          totalMinutesWorked += dur1;
-        }
-
-        if (isPartTime && rec.start2 && rec.end2 && rec.start2.includes(':') && rec.end2.includes(':')) {
-          const [h1, m1] = rec.start2.split(':').map(Number);
-          const [h2, m2] = rec.end2.split(':').map(Number);
-          const dur2 = Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
-          totalMinutesWorked += dur2;
-        }
-      }
-    }
-  });
-
-  const totalHoursWorked = (totalMinutesWorked / 60).toFixed(1);
+  // Calculate monthly stats for this employee using shared precision engine
+  const stats = calculateEmployeeMonthlyStats(employee, attendance, daysArray, year, month);
 
   const getDayOfWeekStr = (day) => {
     const d = new Date(year, month - 1, day);
@@ -328,33 +296,84 @@ export default function PersonalEmployeePage({
 
         {/* Stats Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircle size={24} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Số Ca Đi Làm</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>{totalWorkingDays} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>ca</small></div>
-            </div>
-          </div>
+          {!isPartTime ? (
+            <>
+              {/* Full-Time Stat 1: Số Ngày Công */}
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckCircle size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    {lang === 'zh' ? '出勤工作日' : 'Số Ngày Công'}
+                  </div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {stats.totalWorkingDays} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>{lang === 'zh' ? '天' : 'ngày công'}</small>
+                  </div>
+                </div>
+              </div>
 
+              {/* Full-Time Stat 2: Số Giờ Tăng Ca */}
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    {lang === 'zh' ? '加班時數 (>9h/天)' : 'Số Giờ Tăng Ca (>9h/ngày)'}
+                  </div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent-amber)' }}>
+                    {stats.totalOvertimeHours} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>{lang === 'zh' ? '小時' : 'tiếng'}</small>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Part-Time Stat 1: Số Ca Đi Làm */}
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckCircle size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    {lang === 'zh' ? '出勤班次' : 'Số Ca Đi Làm'}
+                  </div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {stats.totalWorkingDays} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t.shiftUnit}</small>
+                  </div>
+                </div>
+              </div>
+
+              {/* Part-Time Stat 2: Tổng Giờ Làm */}
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    {lang === 'zh' ? '總工時' : 'Tổng Giờ Làm'}
+                  </div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {stats.totalHoursWorked} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t.hourUnit}</small>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Stat 3: Số Ngày Nghỉ (OFF) */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(244, 63, 94, 0.15)', color: 'var(--accent-rose)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Coffee size={24} />
             </div>
             <div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Số Ngày Nghỉ (OFF)</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>{totalOffDays} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>ngày</small></div>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Clock size={24} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Tổng Giờ Làm</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>{totalHoursWorked} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>tiếng</small></div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {lang === 'zh' ? '休假天數 (OFF)' : 'Số Ngày Nghỉ (OFF)'}
+              </div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                {stats.totalOffDays} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t.dayUnit}</small>
+              </div>
             </div>
           </div>
         </div>

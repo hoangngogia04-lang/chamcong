@@ -11,6 +11,7 @@ export default function AttendanceGrid({
   currentUser,
   searchQuery,
   handleCellClick,
+  onSelectEmpDetail,
   lang = 'vi'
 }) {
   const t = translations[lang] || translations.vi;
@@ -119,9 +120,17 @@ export default function AttendanceGrid({
                       <td className="col-stt" rowSpan={2}>
                         {emp.stt || (index + 1)}
                       </td>
-                      <td className="col-name" rowSpan={2}>
+                      <td
+                        className="col-name"
+                        rowSpan={2}
+                        onClick={() => onSelectEmpDetail && onSelectEmpDetail(emp)}
+                        style={{ cursor: 'pointer' }}
+                        title={lang === 'zh' ? `點擊查看 ${emp.name} 的個人詳細班表與考勤` : `Nhấp vào đây để xem toàn bộ lịch ca cá nhân của ${emp.name}`}
+                      >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span>{emp.name}</span>
+                          <span style={{ color: 'var(--accent-cyan)', textDecoration: 'underline', fontWeight: 700 }}>
+                            {emp.name} 🔍
+                          </span>
                           <span style={{ fontSize: '0.68rem', color: isPartTime ? 'var(--accent-purple)' : 'var(--accent-emerald)' }}>
                             {isPartTime ? t.partTime : t.fullTime}
                           </span>

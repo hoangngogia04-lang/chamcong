@@ -19,6 +19,7 @@ export default function AttendancePage({
   searchQuery,
   setSearchQuery,
   handleCellClick,
+  onSelectEmpDetail,
   lang = 'vi'
 }) {
   const t = translations[lang] || translations.vi;
@@ -65,6 +66,7 @@ export default function AttendancePage({
         currentUser={currentUser}
         searchQuery={searchQuery}
         handleCellClick={handleCellClick}
+        onSelectEmpDetail={onSelectEmpDetail}
         lang={lang}
       />
     </div>

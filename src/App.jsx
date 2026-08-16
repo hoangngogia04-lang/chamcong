@@ -6,6 +6,7 @@ import EmployeesPage from './pages/EmployeesPage';
 import UsersPage from './pages/UsersPage';
 import LoginPage from './pages/LoginPage';
 import ShiftEditModal from './components/ShiftEditModal';
+import EmployeeDetailModal from './components/EmployeeDetailModal';
 
 import PersonalEmployeePage from './pages/PersonalEmployeePage';
 import WeeklyRosterPage from './pages/WeeklyRosterPage';
@@ -90,9 +91,10 @@ export default function App() {
   });
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Shift Edit Modal
+  // Shift Edit Modal & Employee Detail Modal
   const [selectedCell, setSelectedCell] = useState(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [selectedDetailEmp, setSelectedDetailEmp] = useState(null);
 
   // Auto-fetch data from Supabase Cloud on mount & when year/month changes
   useEffect(() => {
@@ -351,6 +353,7 @@ export default function App() {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             handleCellClick={handleCellClick}
+            onSelectEmpDetail={setSelectedDetailEmp}
             lang={lang}
           />
         )}
@@ -422,6 +425,20 @@ export default function App() {
           initialStart2={selectedCell.start2}
           initialEnd2={selectedCell.end2}
           onSave={handleSaveShift}
+          lang={lang}
+        />
+      )}
+
+      {/* Employee Shift Detail Modal */}
+      {selectedDetailEmp && (
+        <EmployeeDetailModal
+          isOpen={Boolean(selectedDetailEmp)}
+          onClose={() => setSelectedDetailEmp(null)}
+          employee={selectedDetailEmp}
+          year={year}
+          month={month}
+          attendance={attendance}
+          branches={branches}
           lang={lang}
         />
       )}
