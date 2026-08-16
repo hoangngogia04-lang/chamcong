@@ -69,6 +69,7 @@ export default function PersonalEmployeePage({
   }
 
   const isPartTime = (employee?.type || 'fulltime') === 'parttime';
+  const empAttMap = (attendance && employee?.id && attendance[employee.id]) || {};
 
   // Calculate monthly stats for this employee using shared precision engine
   const stats = calculateEmployeeMonthlyStats(employee, attendance, daysArray, year, month);
