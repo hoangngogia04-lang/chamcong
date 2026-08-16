@@ -841,3 +841,71 @@ input, select {
   }
 }
 
+/* ==========================================================================
+   ROSTER TABLE STICKY LEFT COLUMN & MOBILE LANDSCAPE ROTATION OPTIMIZATION
+   ========================================================================== */
+
+/* Sticky Left Header Column for Weekly Roster */
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.roster-table td:first-child,
+.roster-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  box-shadow: 3px 0 10px rgba(0, 0, 0, 0.4);
+}
+
+.roster-table th:first-child {
+  z-index: 20;
+}
+
+/* Mobile Screen Width Optimization (<= 768px) */
+@media (max-width: 768px) {
+  .navbar {
+    position: relative !important; /* Non-sticky so phone header scrolls away, freeing up 100% vertical space */
+  }
+
+  .roster-table th {
+    min-width: 85px !important;
+    padding: 0.5rem 0.25rem !important;
+    font-size: 0.85rem !important;
+  }
+
+  .roster-table td:first-child {
+    font-size: 0.82rem !important;
+    padding: 0.5rem 0.25rem !important;
+    min-width: 75px !important;
+    width: 75px !important;
+  }
+}
+
+/* Mobile Landscape Mode Optimization (Screen Height <= 500px when phone is rotated sideways) */
+@media (max-height: 500px) {
+  .navbar {
+    position: relative !important;
+    padding: 0.3rem 0.75rem !important;
+  }
+
+  .navbar .brand-title small {
+    display: none !important;
+  }
+
+  .navbar .brand-icon {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .main-content {
+    padding: 0.4rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .table-responsive {
+    max-height: 80vh !important;
+  }
+}
+

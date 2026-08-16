@@ -73,21 +73,27 @@ export default function WeeklyRosterView({
           </h3>
         </div>
 
-        {!readOnly && (
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: '0.3rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-            💡 Nhấp vào ô bất kỳ để xếp/sửa nhân viên cho ca đó
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', background: 'var(--bg-input)', padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontWeight: 600 }}>
+            👉 Vuốt sang phải để xem đủ Thứ 2 ➔ Chủ Nhật
           </span>
-        )}
+
+          {!readOnly && (
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              💡 Nhấp vào ô để xếp/sửa ca
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Main Roster Matrix Table - Exactly matching screenshot design */}
-      <div className="table-responsive" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid #333', overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#0D1117', color: '#FFFFFF', fontFamily: 'sans-serif' }}>
+      <div className="table-responsive" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid #30363D', overflowX: 'auto', WebkitOverflowScrolling: 'touch', boxShadow: 'var(--shadow-md)' }}>
+        <table className="roster-table" style={{ width: '100%', borderCollapse: 'collapse', background: '#0D1117', color: '#FFFFFF', fontFamily: 'sans-serif' }}>
           <thead>
             <tr>
-              {/* Top Left Empty Cell */}
-              <th style={{ width: '120px', background: '#161B22', border: '1px solid #30363D' }}></th>
-              {/* Day Headers (Cyan/Teal background #3A8891 or #2E7D32) */}
+              {/* Top Left Empty Cell - Fixed Sticky */}
+              <th style={{ width: '100px', minWidth: '100px', background: '#161B22', border: '1px solid #30363D', position: 'sticky', left: 0, zIndex: 20, boxShadow: '3px 0 8px rgba(0,0,0,0.5)' }}></th>
+              {/* Day Headers (Cyan/Teal background #2B7A78) */}
               {daysList.map(d => (
                 <th
                   key={d.key}
@@ -95,11 +101,11 @@ export default function WeeklyRosterView({
                     background: '#2B7A78',
                     color: '#FFFFFF',
                     padding: '0.75rem 0.5rem',
-                    fontSize: '1rem',
+                    fontSize: '0.95rem',
                     fontWeight: 700,
                     textAlign: 'center',
                     border: '1px solid #30363D',
-                    minWidth: '110px'
+                    minWidth: '100px'
                   }}
                 >
                   {d.label}
@@ -111,18 +117,24 @@ export default function WeeklyRosterView({
           <tbody>
             {shiftSlots.map(slot => (
               <tr key={slot.key}>
-                {/* Left Header Column (Red Background #D32F2F) */}
+                {/* Left Header Column (Red Background #D32F2F) - STICKY ON HORIZONTAL SCROLL! */}
                 <td
                   style={{
                     background: '#D32F2F',
                     color: '#FFFFFF',
                     fontWeight: 700,
-                    fontSize: '1.05rem',
+                    fontSize: '1rem',
                     textAlign: 'center',
                     verticalAlign: 'middle',
-                    padding: '1rem 0.5rem',
+                    padding: '0.85rem 0.4rem',
                     border: '1px solid #30363D',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 10,
+                    boxShadow: '3px 0 8px rgba(0,0,0,0.5)',
+                    width: '100px',
+                    minWidth: '100px'
                   }}
                 >
                   {slot.label}
