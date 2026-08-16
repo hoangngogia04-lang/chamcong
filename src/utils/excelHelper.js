@@ -203,29 +203,33 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const startCell = ws.getCell(rStart, colIdx);
       const endCell = ws.getCell(rEnd, colIdx);
 
+      const hasSplitShift = Boolean(rec.start2 || rec.end2);
+      // Bright Yellow highlight (FFFFF200) for split shift / ca gãy days
+      const currentCellBg = hasSplitShift ? 'FFFFF200' : shiftBgColor;
+
       if (rec.start === 'OFF') {
         startCell.value = 'OFF';
         startCell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFFF0000' } };
         startCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shiftBgColor } };
+        startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
         startCell.border = thinBorder;
 
         endCell.value = '-';
         endCell.font = { name: 'Times New Roman', size: 9, color: { argb: 'FF999999' } };
         endCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shiftBgColor } };
+        endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
         endCell.border = thinBorder;
       } else {
         startCell.value = rec.start || '';
-        startCell.font = { name: 'Times New Roman', size: 9, color: { argb: 'FF000000' } };
+        startCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF000000' } };
         startCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shiftBgColor } };
+        startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
         startCell.border = thinBorder;
 
         endCell.value = rec.end || '';
-        endCell.font = { name: 'Times New Roman', size: 9, color: { argb: 'FF000000' } };
+        endCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF000000' } };
         endCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shiftBgColor } };
+        endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
         endCell.border = thinBorder;
       }
     }
@@ -241,7 +245,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const backEndCell = ws.getCell(rEnd, colIdx);
 
       const hasSplitShift = Boolean(rec.start2 || rec.end2);
-      const backBgColor = hasSplitShift ? 'FFFFF2CC' : 'FFFFFFFF';
+      const backBgColor = hasSplitShift ? 'FFFFF200' : 'FFFFFFFF';
 
       backStartCell.value = rec.start2 || '';
       backStartCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF7030A0' } };
