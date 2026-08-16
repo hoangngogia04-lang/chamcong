@@ -19,20 +19,40 @@ const BRANCH_COLORS = {
 };
 
 /**
- * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
- * Supports Front Section (Cols D..AH for Ca 1) & Back Section (Cols AI..BA for Part-Time Ca 2)
- * Native Freeze Panes for Columns A, B, C & Top 4 Header Rows
+ * Creates a styled Excel Worksheet with Fixed Columns A, B, C (STT, TÊN, CA) & Top 4 Header Rows
  */
-export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '') => {
+function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, year, month) {
   const daysInMonth = getDaysInMonth(year, month);
   const formattedMonthStr = String(month).padStart(2, '0');
 
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet(`${month}班`, {
+  const ws = wb.addWorksheet(sheetName, {
     views: [
-      { state: 'frozen', xSplit: 3, ySplit: 4, topLeftCell: 'D5', activePane: 'bottomRight' }
+      {
+        state: 'frozen',
+        xSplit: 3,
+        ySplit: 4,
+        topLeftCell: 'D5',
+        activePane: 'bottomRight',
+        showGridLines: true
+      }
     ]
   });
+
+  // Explicit Column Widths set BEFORE populating cells to fix left pane collapse
+  ws.getColumn(1).width = 8;  // STT (Col A)
+  ws.getColumn(2).width = 20; // TÊN (Col B)
+  ws.getColumn(3).width = 12; // CA (Col C)
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    ws.getColumn(d + 3).width = 8;
+  }
+  const backSectionColStart = 35; // Col AI
+  for (let c = daysInMonth + 4; c < backSectionColStart; c++) {
+    ws.getColumn(c).width = 4;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    ws.getColumn(backSectionColStart + (d - 1)).width = 8;
+  }
 
   const thinBorder = {
     top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -41,7 +61,7 @@ export const exportToExcel = async (year, month, employees = [], attendanceData 
     right: { style: 'thin', color: { argb: 'FF000000' } }
   };
 
-  // 1. Title Row (Row 1): "2026 08 GIẤY LÊN CA(上班月表)"
+  // 1. Title Row 1: "2026 08 GIẤY LÊN CA(上班月表)"
   const titleEndCol = daysInMonth + 3;
   ws.mergeCells(1, 1, 1, titleEndCol);
   const titleCell = ws.getCell(1, 1);
@@ -107,8 +127,7 @@ export const exportToExcel = async (year, month, employees = [], attendanceData 
     cell.border = thinBorder;
   }
 
-  // BACK SECTION DAYS (Cols 35..35+daysInMonth-1, starting at Column AI)
-  const backSectionColStart = 35;
+  // BACK SECTION DAYS (Cols 35..35+daysInMonth-1)
   for (let d = 1; d <= daysInMonth; d++) {
     const colIdx = backSectionColStart + (d - 1);
     const cell = ws.getCell(4, colIdx);
@@ -129,7 +148,7 @@ export const exportToExcel = async (year, month, employees = [], attendanceData 
 
   // 4. Employee Data Rows (Row 5 onwards)
   let currentRow = 5;
-  employees.forEach((emp, index) => {
+  employeesList.forEach((emp, index) => {
     const rStart = currentRow;
     const rEnd = currentRow + 1;
     const branchBgColor = `FF${BRANCH_COLORS[emp.branchId] || 'FFE6D9'}`;
@@ -239,23 +258,35 @@ export const exportToExcel = async (year, month, employees = [], attendanceData 
 
     currentRow += 2;
   });
+}
 
-  // Column Widths
-  ws.getColumn(1).width = 6;  // STT
-  ws.getColumn(2).width = 18; // TÊN
-  ws.getColumn(3).width = 10; // CA
+/**
+ * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
+ * Supports Front Section (Cols D..AH for Ca 1) & Back Section (Cols AI..BA for Part-Time Ca 2)
+ * Supports Multi-Sheet Export for ALL Branches or Individual Branch Sheet
+ */
+export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '', allBranchesList = []) => {
+  const wb = new ExcelJS.Workbook();
+  const formattedMonthStr = String(month).padStart(2, '0');
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    ws.getColumn(d + 3).width = 7;
-  }
-  for (let c = daysInMonth + 4; c < backSectionColStart; c++) {
-    ws.getColumn(c).width = 4;
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    ws.getColumn(backSectionColStart + (d - 1)).width = 7;
+  // If ALL branches selected, export Sheet 1 (All Branches) + Sheets for each individual branch!
+  if (branchPrefix === 'Tat_Ca_Chi_Nhanh' && allBranchesList && allBranchesList.length > 0) {
+    // Sheet 1: Tất Cả Chi Nhánh
+    createAttendanceSheet(wb, `${month}班 (Tất Cả)`, employees, attendanceData, year, month);
+
+    // Sheets 2..6: Each Branch tab
+    allBranchesList.forEach(branch => {
+      const branchEmps = employees.filter(e => e.branchId === branch.id);
+      if (branchEmps.length > 0) {
+        createAttendanceSheet(wb, branch.name, branchEmps, attendanceData, year, month);
+      }
+    });
+  } else {
+    // Single Branch Export (e.g. "Xuân Lộc", "Biên Hoà"...)
+    const cleanSheetName = branchPrefix ? branchPrefix.replace(/_/g, ' ') : `${month}班`;
+    createAttendanceSheet(wb, cleanSheetName, employees, attendanceData, year, month);
   }
 
-  // Dynamic file name depending on branchPrefix or Admin
   let prefixStr = '';
   if (typeof branchPrefix === 'string') {
     prefixStr = branchPrefix.trim();

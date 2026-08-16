@@ -236,7 +236,8 @@ export default function App() {
       ? 'Tat_Ca_Chi_Nhanh'
       : (activeBranch ? activeBranch.name.replace(/\s+/g, '_') : `Chi_Nhanh_${activeBranchId}`);
 
-    exportToExcel(year, month, visibleEmployees, attendance, branchPrefix);
+    const empsToExport = activeBranchId === 'ALL' ? employees : visibleEmployees;
+    exportToExcel(year, month, empsToExport, attendance, branchPrefix, branches);
   };
 
   // Employee CRUD handlers
