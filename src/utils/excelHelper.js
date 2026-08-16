@@ -203,9 +203,17 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const startCell = ws.getCell(rStart, colIdx);
       const endCell = ws.getCell(rEnd, colIdx);
 
-      const hasSplitShift = Boolean(rec.start2 || rec.end2);
+      // Detect split shifts / ca gãy for both Full-Time and Part-Time
+      const isSplitShiftRec = Boolean(
+        rec.start2 ||
+        rec.end2 ||
+        rec.isSplitShift ||
+        (rec.presetLabel && String(rec.presetLabel).toLowerCase().includes('gãy')) ||
+        (rec.start === '08:00' && rec.end === '22:00')
+      );
+
       // Bright Yellow highlight (FFFFF200) for split shift / ca gãy days
-      const currentCellBg = hasSplitShift ? 'FFFFF200' : shiftBgColor;
+      const currentCellBg = isSplitShiftRec ? 'FFFFF200' : shiftBgColor;
 
       if (rec.start === 'OFF') {
         startCell.value = 'OFF';
@@ -221,13 +229,13 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
         endCell.border = thinBorder;
       } else {
         startCell.value = rec.start || '';
-        startCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF000000' } };
+        startCell.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF000000' } };
         startCell.alignment = { horizontal: 'center', vertical: 'middle' };
         startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
         startCell.border = thinBorder;
 
         endCell.value = rec.end || '';
-        endCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF000000' } };
+        endCell.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF000000' } };
         endCell.alignment = { horizontal: 'center', vertical: 'middle' };
         endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
         endCell.border = thinBorder;
@@ -244,17 +252,23 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const backStartCell = ws.getCell(rStart, colIdx);
       const backEndCell = ws.getCell(rEnd, colIdx);
 
-      const hasSplitShift = Boolean(rec.start2 || rec.end2);
-      const backBgColor = hasSplitShift ? 'FFFFF200' : 'FFFFFFFF';
+      const isSplitShiftRec = Boolean(
+        rec.start2 ||
+        rec.end2 ||
+        rec.isSplitShift ||
+        (rec.presetLabel && String(rec.presetLabel).toLowerCase().includes('gãy')) ||
+        (rec.start === '08:00' && rec.end === '22:00')
+      );
+      const backBgColor = isSplitShiftRec ? 'FFFFF200' : 'FFFFFFFF';
 
       backStartCell.value = rec.start2 || '';
-      backStartCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF7030A0' } };
+      backStartCell.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF7030A0' } };
       backStartCell.alignment = { horizontal: 'center', vertical: 'middle' };
       backStartCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: backBgColor } };
       backStartCell.border = thinBorder;
 
       backEndCell.value = rec.end2 || '';
-      backEndCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF7030A0' } };
+      backEndCell.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF7030A0' } };
       backEndCell.alignment = { horizontal: 'center', vertical: 'middle' };
       backEndCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: backBgColor } };
       backEndCell.border = thinBorder;
