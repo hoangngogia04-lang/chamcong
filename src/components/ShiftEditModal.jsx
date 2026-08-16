@@ -88,15 +88,8 @@ export default function ShiftEditModal({
     const fStart2 = formatTimeOnBlur(start2);
     const fEnd2 = formatTimeOnBlur(end2);
 
-    let finalStart1 = fStart;
-    let finalEnd1 = fEnd;
-
-    // For Full-time split shifts: auto-combine total hours into single shift on main table!
-    if (!isPartTime && fStart2 && fEnd2) {
-      const calc = calculateFulltimeCombinedShift(fStart, fEnd, fStart2, fEnd2);
-      finalStart1 = calc.start;
-      finalEnd1 = calc.end;
-    }
+    const finalStart1 = fStart;
+    const finalEnd1 = fEnd;
 
     onSave(employee.id, dateKey, finalStart1, finalEnd1, fStart2, fEnd2);
     onClose();

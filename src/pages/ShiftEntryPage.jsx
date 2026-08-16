@@ -229,17 +229,10 @@ export default function ShiftEntryPage({
     const formattedDay = String(selectedDay).padStart(2, '0');
     const dateKey = `${year}-${formattedMonthStr}-${formattedDay}`;
 
-    let saveStart1 = formattedStart;
-    let saveEnd1 = formattedEnd;
-    let saveStart2 = formattedStart2;
-    let saveEnd2 = formattedEnd2;
-
-    // For Full-time split shifts: auto-combine total hours into single shift on main table!
-    if (!isPartTime && formattedStart2 && formattedEnd2) {
-      const calc = calculateFulltimeCombinedShift(formattedStart, formattedEnd, formattedStart2, formattedEnd2);
-      saveStart1 = calc.start;
-      saveEnd1 = calc.end;
-    }
+    const saveStart1 = formattedStart;
+    const saveEnd1 = formattedEnd;
+    const saveStart2 = formattedStart2;
+    const saveEnd2 = formattedEnd2;
 
     setShiftStart(saveStart1);
     setShiftEnd(saveEnd1);

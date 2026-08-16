@@ -157,12 +157,19 @@ export default function AttendanceGrid({
                             key={day}
                             className={`cell-time ${!isLocked && currentUser?.role !== 'employee' ? 'editable' : ''}`}
                             onClick={() => handleCellClickGuard(emp, dateKey, startVal, endVal, start2Val, end2Val, day)}
-                            style={{ opacity: isLocked ? 0.35 : 1 }}
+                            style={{ opacity: isLocked ? 0.35 : 1, verticalAlign: 'middle', padding: '0.35rem 0.2rem' }}
                           >
                             {isOff ? (
                               <span className="text-off">OFF</span>
                             ) : startVal ? (
-                              <span className="text-start-time">{startVal}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1 }}>
+                                <span className="text-start-time">{startVal}</span>
+                                {start2Val && (
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600, marginTop: '2px' }}>
+                                    ({start2Val})
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-empty">-</span>
                             )}
@@ -193,12 +200,19 @@ export default function AttendanceGrid({
                             key={day}
                             className={`cell-time ${!isLocked && currentUser?.role !== 'employee' ? 'editable' : ''}`}
                             onClick={() => handleCellClickGuard(emp, dateKey, startVal, endVal, start2Val, end2Val, day)}
-                            style={{ opacity: isLocked ? 0.35 : 1 }}
+                            style={{ opacity: isLocked ? 0.35 : 1, verticalAlign: 'middle', padding: '0.35rem 0.2rem' }}
                           >
                             {isOff ? (
                               <span className="text-off" style={{ opacity: 0.3 }}>-</span>
                             ) : endVal ? (
-                              <span className="text-end-time">{endVal}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1 }}>
+                                <span className="text-end-time">{endVal}</span>
+                                {end2Val && (
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600, marginTop: '2px' }}>
+                                    ({end2Val})
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-empty">-</span>
                             )}
