@@ -387,6 +387,7 @@ export default function PersonalEmployeePage({
               branchId={employee.branchId}
               branchObj={branchObj}
               employees={employees}
+              attendance={attendance}
               rosterData={(weeklyRosters && weeklyRosters[`${employee.branchId}_${year}_${month}_W${weekNum}`]) || {}}
               readOnly={true}
             />

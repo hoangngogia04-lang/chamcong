@@ -9,6 +9,7 @@ export default function WeeklyRosterPage({
   setMonth,
   branches = [],
   employees = [],
+  attendance = {},
   currentUser,
   weeklyRosters = {},
   onSaveRoster
@@ -147,6 +148,7 @@ export default function WeeklyRosterPage({
           branchId={activeBranchId}
           branchObj={activeBranch}
           employees={employees}
+          attendance={attendance}
           rosterData={currentRosterData}
           onSaveRoster={onSaveRoster}
           readOnly={false}

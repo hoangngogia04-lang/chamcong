@@ -8,6 +8,7 @@ export default function WeeklyRosterView({
   branchId,
   branchObj,
   employees = [],
+  attendance = {},
   rosterData = {},
   onSaveRoster,
   readOnly = false
@@ -35,9 +36,72 @@ export default function WeeklyRosterView({
     { key: '17h - 22h', label: '17h - 22h', bg: '#B71C1C' }
   ];
 
+  // Auto-derive roster from attendance data if no custom roster exists for this week
+  const hasCustomRoster = Object.values(rosterData).some(slotMap =>
+    Object.values(slotMap || {}).some(arr => Array.isArray(arr) && arr.length > 0)
+  );
+
+  let effectiveRosterData = rosterData;
+
+  if (!hasCustomRoster && attendance && Object.keys(attendance).length > 0) {
+    const derived = {
+      '8h - 13h': {},
+      '13h - 17h': {},
+      '17h - 22h': {}
+    };
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const startDay = (weekNum - 1) * 7 + 1;
+    const endDay = Math.min(daysInMonth, weekNum * 7);
+
+    const daysListKeys = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const formattedMonthStr = String(month).padStart(2, '0');
+
+    for (let day = startDay; day <= endDay; day++) {
+      const d = new Date(year, month - 1, day);
+      const dayOfWeek = d.getDay();
+      const dayKey = daysListKeys[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
+
+      const dayStr = String(day).padStart(2, '0');
+      const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
+
+      branchEmployees.forEach(emp => {
+        const empAttMap = attendance[emp.id] || {};
+        const rec = empAttMap[dateKey];
+        if (!rec || !rec.start || rec.start === 'OFF') return;
+
+        const startH = parseInt(rec.start.split(':')[0], 10);
+        const endH = parseInt(rec.end.split(':')[0], 10);
+
+        const start2H = rec.start2 ? parseInt(rec.start2.split(':')[0], 10) : null;
+        const end2H = rec.end2 ? parseInt(rec.end2.split(':')[0], 10) : null;
+
+        // 8h - 13h slot
+        if ((startH < 13 && endH > 8) || (start2H !== null && start2H < 13 && end2H > 8)) {
+          if (!derived['8h - 13h'][dayKey]) derived['8h - 13h'][dayKey] = [];
+          if (!derived['8h - 13h'][dayKey].includes(emp.id)) derived['8h - 13h'][dayKey].push(emp.id);
+        }
+
+        // 13h - 17h slot
+        if ((startH < 17 && endH > 13) || (start2H !== null && start2H < 17 && end2H > 13)) {
+          if (!derived['13h - 17h'][dayKey]) derived['13h - 17h'][dayKey] = [];
+          if (!derived['13h - 17h'][dayKey].includes(emp.id)) derived['13h - 17h'][dayKey].push(emp.id);
+        }
+
+        // 17h - 22h slot
+        if ((startH >= 17 || endH > 17) || (start2H !== null && (start2H >= 17 || end2H > 17))) {
+          if (!derived['17h - 22h'][dayKey]) derived['17h - 22h'][dayKey] = [];
+          if (!derived['17h - 22h'][dayKey].includes(emp.id)) derived['17h - 22h'][dayKey].push(emp.id);
+        }
+      });
+    }
+
+    effectiveRosterData = derived;
+  }
+
   const handleOpenEdit = (slotKey, dayKey, dayName) => {
     if (readOnly) return;
-    const currentEmpIds = (rosterData[slotKey] && rosterData[slotKey][dayKey]) || [];
+    const currentEmpIds = (effectiveRosterData[slotKey] && effectiveRosterData[slotKey][dayKey]) || [];
     setSelectedEmpIds([...currentEmpIds]);
     setEditingSlot({ slotKey, dayKey, dayName });
   };
@@ -54,7 +118,7 @@ export default function WeeklyRosterView({
     if (!editingSlot) return;
     const { slotKey, dayKey } = editingSlot;
 
-    const newRosterData = { ...rosterData };
+    const newRosterData = { ...effectiveRosterData };
     if (!newRosterData[slotKey]) newRosterData[slotKey] = {};
     newRosterData[slotKey][dayKey] = selectedEmpIds;
 
@@ -69,7 +133,7 @@ export default function WeeklyRosterView({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <Calendar size={22} className="text-cyan" />
           <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-            Bảng Sắp Ca Chi Nhánh {branchObj?.name || branchId} (Tuần {weekNum} - Tháng {month}/{year})
+            Bảng Sắp Ca Chi Nhánh {branchObj?.name || branchId} (Tuần {weekNum} – Tháng {month}/{year})
           </h3>
         </div>
 
@@ -142,7 +206,7 @@ export default function WeeklyRosterView({
 
                 {/* Day Cells */}
                 {daysList.map(d => {
-                  const empIds = (rosterData[slot.key] && rosterData[slot.key][d.key]) || [];
+                  const empIds = (effectiveRosterData[slot.key] && effectiveRosterData[slot.key][d.key]) || [];
                   const scheduledEmps = empIds.map(id => branchEmployees.find(e => e.id === id)).filter(Boolean);
 
                   return (

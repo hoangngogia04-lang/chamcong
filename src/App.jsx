@@ -196,10 +196,13 @@ export default function App() {
   // Handle Weekly Roster Save
   const handleSaveRoster = (branchId, yr, mth, wkNum, rosterData) => {
     const key = `${branchId}_${yr}_${mth}_W${wkNum}`;
-    setWeeklyRosters(prev => ({
-      ...prev,
-      [key]: rosterData
-    }));
+    setWeeklyRosters(prev => {
+      const updated = { ...prev, [key]: rosterData };
+      try {
+        localStorage.setItem('quan_ly_cham_cong_weekly_rosters', JSON.stringify(updated));
+      } catch (err) {}
+      return updated;
+    });
 
     saveWeeklyRosterToSupabase(branchId, yr, mth, wkNum, rosterData);
   };
@@ -358,6 +361,7 @@ export default function App() {
             setMonth={setMonth}
             branches={branches}
             employees={employees}
+            attendance={attendance}
             currentUser={currentUser}
             weeklyRosters={weeklyRosters}
             onSaveRoster={handleSaveRoster}
