@@ -24,6 +24,7 @@ export default function PersonalEmployeePage({
   onUpdateUser,
   onUpdateEmployee
 }) {
+  const t = translations[lang] || translations.vi;
   const [selectedView, setSelectedView] = useState('weeklyRoster'); // Mặc định vào thẳng Bảng Sắp Ca Chi Nhánh khi nhân viên đăng nhập!
   const [weekNum, setWeekNum] = useState(() => getCurrentWeekOfMonth(year, month)); // Mặc định tự động chọn Tuần hiện tại chuẩn Lịch Vạn Niên!
 
