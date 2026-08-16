@@ -1,4 +1,4 @@
-import XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 
 /**
  * Gets the number of days in a given month and year
@@ -21,312 +21,239 @@ const BRANCH_COLORS = {
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
  * Supports Front Section (Cols D..AH for Ca 1) & Back Section (Cols AI..BA for Part-Time Ca 2)
+ * Native Freeze Panes for Columns A, B, C & Top 4 Header Rows
  */
-export const exportToExcel = (year, month, employees, attendanceData, branchPrefix = '') => {
+export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '') => {
   const daysInMonth = getDaysInMonth(year, month);
   const formattedMonthStr = String(month).padStart(2, '0');
 
-  const wb = XLSX.utils.book_new();
-  const ws = {};
-  const merges = [];
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(`${month}班`, {
+    views: [
+      { state: 'frozen', xSplit: 3, ySplit: 4, topLeftCell: 'D5', activePane: 'bottomRight' }
+    ]
+  });
 
-  // Thin black gridline border for table cells
   const thinBorder = {
-    top: { style: 'thin', color: { rgb: '000000' } },
-    bottom: { style: 'thin', color: { rgb: '000000' } },
-    left: { style: 'thin', color: { rgb: '000000' } },
-    right: { style: 'thin', color: { rgb: '000000' } }
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } }
   };
 
-  // 1. Title Row (Row 0 / Index 0): "2026 08 GIẤY LÊN CA(上班月表)"
-  ws['A1'] = {
-    v: `${year} ${formattedMonthStr} GIẤY LÊN CA(上班月表)`,
-    s: {
-      font: { bold: true, sz: 16, name: 'Times New Roman' },
-      alignment: { horizontal: 'center', vertical: 'center' }
-    }
-  };
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: daysInMonth + 2 } });
+  // 1. Title Row (Row 1): "2026 08 GIẤY LÊN CA(上班月表)"
+  const titleEndCol = daysInMonth + 3;
+  ws.mergeCells(1, 1, 1, titleEndCol);
+  const titleCell = ws.getCell(1, 1);
+  titleCell.value = `${year} ${formattedMonthStr} GIẤY LÊN CA(上班月表)`;
+  titleCell.font = { name: 'Times New Roman', size: 16, bold: true };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  // 2. Subtitle Header Row 2 & 3 (Rows 1 & 2 / Index 1 & 2): "THÁNG 8" & "NGÀY(日期)"
-  ws['A2'] = {
-    v: `THÁNG ${month}`,
-    s: {
-      font: { bold: true, sz: 11, name: 'Times New Roman' },
-      alignment: { horizontal: 'center', vertical: 'center' },
-      border: thinBorder
-    }
-  };
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 2, c: 2 } });
+  // 2. Subtitle Header Row 2 & 3: "THÁNG 8" & "NGÀY(日期)"
+  ws.mergeCells(2, 1, 3, 3);
+  const mCell = ws.getCell(2, 1);
+  mCell.value = `THÁNG ${month}`;
+  mCell.font = { name: 'Times New Roman', size: 11, bold: true };
+  mCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  ws['D2'] = {
-    v: 'NGÀY(日期)',
-    s: {
-      font: { bold: true, sz: 11, name: 'Times New Roman' },
-      alignment: { horizontal: 'center', vertical: 'center' },
-      border: thinBorder
-    }
-  };
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 2, c: daysInMonth + 2 } });
+  ws.mergeCells(2, 4, 3, titleEndCol);
+  const nCell = ws.getCell(2, 4);
+  nCell.value = 'NGÀY(日期)';
+  nCell.font = { name: 'Times New Roman', size: 11, bold: true };
+  nCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  // Ensure thin borders for merged subtitle header cells
-  for (let r = 1; r <= 2; r++) {
-    for (let c = 0; c <= daysInMonth + 2; c++) {
-      const cellRef = XLSX.utils.encode_cell({ r, c });
-      if (!ws[cellRef]) {
-        ws[cellRef] = { v: '', s: { border: thinBorder } };
-      }
+  // Thin borders for header rows 2 & 3
+  for (let r = 2; r <= 3; r++) {
+    for (let c = 1; c <= titleEndCol; c++) {
+      ws.getCell(r, c).border = thinBorder;
     }
   }
 
-  // 3. Column Header Row 4 (Row 3 / Index 3): STT, TÊN, CA(班別), 1..31 (FRONT & BACK SECTIONS)
-  ws['A4'] = {
-    v: 'STT',
-    s: {
-      font: { bold: true, sz: 11, name: 'Times New Roman' },
-      alignment: { horizontal: 'center', vertical: 'center' },
-      border: thinBorder
-    }
-  };
-  ws['B4'] = {
-    v: 'TÊN',
-    s: {
-      font: { bold: true, sz: 11, name: 'Times New Roman' },
-      alignment: { horizontal: 'center', vertical: 'center' },
-      border: thinBorder
-    }
-  };
-  ws['C4'] = {
-    v: 'CA(班別)',
-    s: {
-      font: { bold: true, sz: 11, name: 'Times New Roman' },
-      alignment: { horizontal: 'center', vertical: 'center' },
-      border: thinBorder
-    }
-  };
+  // 3. Column Header Row 4: STT, TÊN, CA(班別), 1..31 (FRONT & BACK SECTIONS)
+  const cellA4 = ws.getCell(4, 1);
+  cellA4.value = 'STT';
+  cellA4.font = { name: 'Times New Roman', size: 11, bold: true };
+  cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
+  cellA4.border = thinBorder;
 
-  // FRONT SECTION DAYS (Cols 3..3+daysInMonth-1)
+  const cellB4 = ws.getCell(4, 2);
+  cellB4.value = 'TÊN';
+  cellB4.font = { name: 'Times New Roman', size: 11, bold: true };
+  cellB4.alignment = { horizontal: 'center', vertical: 'middle' };
+  cellB4.border = thinBorder;
+
+  const cellC4 = ws.getCell(4, 3);
+  cellC4.value = 'CA(班別)';
+  cellC4.font = { name: 'Times New Roman', size: 11, bold: true };
+  cellC4.alignment = { horizontal: 'center', vertical: 'middle' };
+  cellC4.border = thinBorder;
+
+  // FRONT SECTION DAYS (Cols 4..4+daysInMonth-1)
   for (let d = 1; d <= daysInMonth; d++) {
-    const colIdx = d + 2;
-    const cellRef = XLSX.utils.encode_cell({ r: 3, c: colIdx });
-    const dateObj = new Date(year, month - 1, d);
-    const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-    ws[cellRef] = {
-      v: d,
-      s: {
-        font: {
-          bold: true,
-          sz: 10,
-          name: 'Times New Roman',
-          color: isWeekend ? { rgb: 'FF0000' } : { rgb: '000000' }
-        },
-        alignment: { horizontal: 'center', vertical: 'center' },
-        border: thinBorder
-      }
-    };
-  }
-
-  // BACK SECTION DAYS (Cols 34..34+daysInMonth-1, starting at Column AI)
-  const backSectionColStart = 34; // Col AI
-  for (let d = 1; d <= daysInMonth; d++) {
-    const colIdx = backSectionColStart + (d - 1);
-    const cellRef = XLSX.utils.encode_cell({ r: 3, c: colIdx });
+    const colIdx = d + 3;
+    const cell = ws.getCell(4, colIdx);
     const dateObj = new Date(year, month - 1, d);
     const dayOfWeek = dateObj.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-    ws[cellRef] = {
-      v: d,
-      s: {
-        font: {
-          bold: true,
-          sz: 10,
-          name: 'Times New Roman',
-          color: isWeekend ? { rgb: 'FF0000' } : { rgb: '000000' }
-        },
-        alignment: { horizontal: 'center', vertical: 'center' },
-        border: thinBorder
-      }
+    cell.value = d;
+    cell.font = {
+      name: 'Times New Roman',
+      size: 10,
+      bold: true,
+      color: isWeekend ? { argb: 'FFFF0000' } : { argb: 'FF000000' }
     };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
   }
 
-  // 4. Employee Data Rows (Row 5 onwards / Index 4...)
-  let currentRow = 4;
+  // BACK SECTION DAYS (Cols 35..35+daysInMonth-1, starting at Column AI)
+  const backSectionColStart = 35;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const colIdx = backSectionColStart + (d - 1);
+    const cell = ws.getCell(4, colIdx);
+    const dateObj = new Date(year, month - 1, d);
+    const dayOfWeek = dateObj.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    cell.value = d;
+    cell.font = {
+      name: 'Times New Roman',
+      size: 10,
+      bold: true,
+      color: isWeekend ? { argb: 'FFFF0000' } : { argb: 'FF000000' }
+    };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  }
+
+  // 4. Employee Data Rows (Row 5 onwards)
+  let currentRow = 5;
   employees.forEach((emp, index) => {
     const rStart = currentRow;
     const rEnd = currentRow + 1;
-    const branchBgColor = BRANCH_COLORS[emp.branchId] || 'FFE6D9';
-
-    // Alternating background for shift cells (White #FFFFFF for even index 0, 2, 4..., Soft Grey #F2F2F2 for odd index 1, 3, 5...)
+    const branchBgColor = `FF${BRANCH_COLORS[emp.branchId] || 'FFE6D9'}`;
     const isOddEmp = index % 2 === 1;
-    const shiftBgColor = isOddEmp ? 'F2F2F2' : 'FFFFFF';
-
+    const shiftBgColor = isOddEmp ? 'FFF2F2F2' : 'FFFFFFFF';
     const empStt = emp.stt || (index + 1);
 
-    // STT (Merged A{rStart+1}:A{rEnd+1})
-    const sttCell = XLSX.utils.encode_cell({ r: rStart, c: 0 });
-    const sttEndCell = XLSX.utils.encode_cell({ r: rEnd, c: 0 });
-    ws[sttCell] = {
-      v: empStt,
-      s: {
-        font: { bold: true, sz: 10, name: 'Times New Roman' },
-        alignment: { horizontal: 'center', vertical: 'center' },
-        fill: { fgColor: { rgb: branchBgColor } },
-        border: thinBorder
-      }
-    };
-    ws[sttEndCell] = { v: '', s: { fill: { fgColor: { rgb: branchBgColor } }, border: thinBorder } };
-    merges.push({ s: { r: rStart, c: 0 }, e: { r: rEnd, c: 0 } });
+    // STT (Merged A{rStart}:A{rEnd})
+    ws.mergeCells(rStart, 1, rEnd, 1);
+    const sttCell = ws.getCell(rStart, 1);
+    sttCell.value = empStt;
+    sttCell.font = { name: 'Times New Roman', size: 10, bold: true };
+    sttCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    sttCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+    sttCell.border = thinBorder;
+    ws.getCell(rEnd, 1).border = thinBorder;
 
-    // TÊN (Merged B{rStart+1}:B{rEnd+1})
-    const nameCell = XLSX.utils.encode_cell({ r: rStart, c: 1 });
-    const nameEndCell = XLSX.utils.encode_cell({ r: rEnd, c: 1 });
-    ws[nameCell] = {
-      v: emp.name || '',
-      s: {
-        font: { bold: true, sz: 10, name: 'Times New Roman' },
-        alignment: { horizontal: 'center', vertical: 'center' },
-        fill: { fgColor: { rgb: branchBgColor } },
-        border: thinBorder
-      }
-    };
-    ws[nameEndCell] = { v: '', s: { fill: { fgColor: { rgb: branchBgColor } }, border: thinBorder } };
-    merges.push({ s: { r: rStart, c: 1 }, e: { r: rEnd, c: 1 } });
+    // TÊN (Merged B{rStart}:B{rEnd})
+    ws.mergeCells(rStart, 2, rEnd, 2);
+    const nameCell = ws.getCell(rStart, 2);
+    nameCell.value = emp.name || '';
+    nameCell.font = { name: 'Times New Roman', size: 10, bold: true };
+    nameCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    nameCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+    nameCell.border = thinBorder;
+    ws.getCell(rEnd, 2).border = thinBorder;
 
-    // CA (Merged C{rStart+1}:C{rEnd+1})
-    const caStartCell = XLSX.utils.encode_cell({ r: rStart, c: 2 });
-    const caEndCell = XLSX.utils.encode_cell({ r: rEnd, c: 2 });
-    ws[caStartCell] = { v: '', s: { fill: { fgColor: { rgb: shiftBgColor } }, border: thinBorder } };
-    ws[caEndCell] = { v: '', s: { fill: { fgColor: { rgb: shiftBgColor } }, border: thinBorder } };
-    merges.push({ s: { r: rStart, c: 2 }, e: { r: rEnd, c: 2 } });
+    // CA (C)
+    const caStartCell = ws.getCell(rStart, 3);
+    caStartCell.value = 'Lên Ca';
+    caStartCell.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF008000' } };
+    caStartCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    caStartCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+    caStartCell.border = thinBorder;
 
-    // Days Shift Data: FRONT SECTION (Ca 1) & BACK SECTION (Part-Time Ca 2)
-    const isPartTime = (emp.type || 'fulltime') === 'parttime';
+    const caEndCell = ws.getCell(rEnd, 3);
+    caEndCell.value = 'Xuống Ca';
+    caEndCell.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF0000FF' } };
+    caEndCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    caEndCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+    caEndCell.border = thinBorder;
+
+    // Attendance records for Front Section (Ca 1)
+    const empAtt = (attendanceData && attendanceData[emp.id]) || {};
 
     for (let d = 1; d <= daysInMonth; d++) {
+      const colIdx = d + 3;
       const dayStr = String(d).padStart(2, '0');
       const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
+      const rec = empAtt[dateKey] || {};
 
-      const record = (attendanceData[emp.id] && attendanceData[emp.id][dateKey]) || {};
-      const startVal = record.start || '';
-      const endVal = record.end || '';
-      const start2Val = record.start2 || '';
-      const end2Val = record.end2 || '';
+      const startCell = ws.getCell(rStart, colIdx);
+      const endCell = ws.getCell(rEnd, colIdx);
 
-      const isOff = startVal === 'OFF';
-      const hasSplitShift = Boolean(start2Val && end2Val);
+      if (rec.start === 'OFF') {
+        startCell.value = 'OFF';
+        startCell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFFF0000' } };
+        startCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shiftBgColor } };
+        startCell.border = thinBorder;
 
-      // Yellow highlight (#FFFF00) for split shift cells in Excel!
-      const cellBgColor = hasSplitShift ? 'FFFF00' : shiftBgColor;
+        endCell.value = '-';
+        endCell.font = { name: 'Times New Roman', size: 9, color: { argb: 'FF999999' } };
+        endCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shiftBgColor } };
+        endCell.border = thinBorder;
+      } else {
+        startCell.value = rec.start || '';
+        startCell.font = { name: 'Times New Roman', size: 9, color: { argb: 'FF000000' } };
+        startCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shiftBgColor } };
+        startCell.border = thinBorder;
 
-      // --- FRONT SECTION (Cols D..AH) ---
-      const frontColIdx = d + 2;
-      const frontStartRef = XLSX.utils.encode_cell({ r: rStart, c: frontColIdx });
-      const frontEndRef = XLSX.utils.encode_cell({ r: rEnd, c: frontColIdx });
+        endCell.value = rec.end || '';
+        endCell.font = { name: 'Times New Roman', size: 9, color: { argb: 'FF000000' } };
+        endCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shiftBgColor } };
+        endCell.border = thinBorder;
+      }
+    }
 
-      ws[frontStartRef] = {
-        v: startVal,
-        s: {
-          font: {
-            sz: 9,
-            name: 'Times New Roman',
-            bold: isOff || hasSplitShift,
-            color: isOff ? { rgb: 'FF0000' } : { rgb: '000000' }
-          },
-          alignment: { horizontal: 'center', vertical: 'center' },
-          fill: { fgColor: { rgb: cellBgColor } },
-          border: thinBorder
-        }
-      };
+    // Attendance records for Back Section (Part-Time Ca 2)
+    for (let d = 1; d <= daysInMonth; d++) {
+      const colIdx = backSectionColStart + (d - 1);
+      const dayStr = String(d).padStart(2, '0');
+      const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
+      const rec = empAtt[dateKey] || {};
 
-      ws[frontEndRef] = {
-        v: endVal,
-        s: {
-          font: {
-            sz: 9,
-            name: 'Times New Roman',
-            bold: hasSplitShift
-          },
-          alignment: { horizontal: 'center', vertical: 'center' },
-          fill: { fgColor: { rgb: cellBgColor } },
-          border: thinBorder
-        }
-      };
+      const backStartCell = ws.getCell(rStart, colIdx);
+      const backEndCell = ws.getCell(rEnd, colIdx);
 
-      // --- BACK SECTION (Cols AI..BA starting at col 34) ---
-      // ONLY write Ca 2 in back section for Part-Time employees! (Full-Time split shifts were already combined in front section)
-      const backColIdx = backSectionColStart + (d - 1);
-      const backStartRef = XLSX.utils.encode_cell({ r: rStart, c: backColIdx });
-      const backEndRef = XLSX.utils.encode_cell({ r: rEnd, c: backColIdx });
+      const hasSplitShift = Boolean(rec.start2 || rec.end2);
+      const backBgColor = hasSplitShift ? 'FFFFF2CC' : 'FFFFFFFF';
 
-      const backStartVal = isPartTime ? start2Val : '';
-      const backEndVal = isPartTime ? end2Val : '';
-      const backBgColor = (isPartTime && hasSplitShift) ? 'FFFF00' : shiftBgColor;
+      backStartCell.value = rec.start2 || '';
+      backStartCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF7030A0' } };
+      backStartCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      backStartCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: backBgColor } };
+      backStartCell.border = thinBorder;
 
-      ws[backStartRef] = {
-        v: backStartVal,
-        s: {
-          font: { sz: 9, name: 'Times New Roman', bold: hasSplitShift },
-          alignment: { horizontal: 'center', vertical: 'center' },
-          fill: { fgColor: { rgb: backBgColor } },
-          border: thinBorder
-        }
-      };
-
-      ws[backEndRef] = {
-        v: backEndVal,
-        s: {
-          font: { sz: 9, name: 'Times New Roman', bold: hasSplitShift },
-          alignment: { horizontal: 'center', vertical: 'center' },
-          fill: { fgColor: { rgb: backBgColor } },
-          border: thinBorder
-        }
-      };
+      backEndCell.value = rec.end2 || '';
+      backEndCell.font = { name: 'Times New Roman', size: 9, bold: hasSplitShift, color: { argb: 'FF7030A0' } };
+      backEndCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      backEndCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: backBgColor } };
+      backEndCell.border = thinBorder;
     }
 
     currentRow += 2;
   });
 
-  // Apply merges and ref bounds up to back section
-  const totalMaxCols = backSectionColStart + daysInMonth - 1;
-  ws['!merges'] = merges;
-  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: totalMaxCols } });
-
-  // Freeze Columns A, B, C (STT, TÊN, CA) & Top 4 Header Rows
-  // Helps fixed columns A, B, C stay pinned on screen when scrolling horizontally
-  ws['!views'] = [
-    {
-      state: 'frozen',
-      xSplit: 3,
-      ySplit: 4,
-      topLeftCell: 'D5',
-      activePane: 'bottomRight'
-    }
-  ];
-
   // Column Widths
-  const colWidths = [
-    { wch: 6 },  // STT
-    { wch: 18 }, // TÊN
-    { wch: 10 }  // CA
-  ];
-  for (let d = 1; d <= daysInMonth; d++) {
-    colWidths.push({ wch: 7 });
-  }
+  ws.getColumn(1).width = 6;  // STT
+  ws.getColumn(2).width = 18; // TÊN
+  ws.getColumn(3).width = 10; // CA
 
-  // Widths for gap and back section
-  for (let c = daysInMonth + 3; c < backSectionColStart; c++) {
-    colWidths.push({ wch: 4 });
+  for (let d = 1; d <= daysInMonth; d++) {
+    ws.getColumn(d + 3).width = 7;
+  }
+  for (let c = daysInMonth + 4; c < backSectionColStart; c++) {
+    ws.getColumn(c).width = 4;
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    colWidths.push({ wch: 7 });
+    ws.getColumn(backSectionColStart + (d - 1)).width = 7;
   }
-  ws['!cols'] = colWidths;
-
-  const sheetName = `${month}班`; // e.g. "8班" matching original sheet name
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
   // Dynamic file name depending on branchPrefix or Admin
   let prefixStr = '';
@@ -341,167 +268,15 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
     fileName = `${prefixStr}_Cham_Cong_Thang_${formattedMonthStr}.xlsx`;
   }
 
-  XLSX.writeFile(wb, fileName);
-};
-
-/**
- * Imports attendance data from an uploaded Excel file
- */
-export const importFromExcel = (file, existingEmployees, branches) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const sheetJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        if (!sheetJson || sheetJson.length < 5) {
-          throw new Error('File Excel không đúng định dạng mẫu!');
-        }
-
-        // Row 4 (index 3) contains days
-        const daysRow = sheetJson[3] || [];
-        const dayIndices = [];
-        const backDayIndices = [];
-
-        // Front section days (Cols 3..33)
-        for (let c = 3; c < Math.min(34, daysRow.length); c++) {
-          const val = daysRow[c];
-          if (val && !isNaN(val)) {
-            dayIndices.push({ day: parseInt(val, 10), colIdx: c });
-          }
-        }
-
-        // Back section days (Cols 34..)
-        for (let c = 34; c < daysRow.length; c++) {
-          const val = daysRow[c];
-          if (val && !isNaN(val)) {
-            backDayIndices.push({ day: parseInt(val, 10), colIdx: c });
-          }
-        }
-
-        let detectedYear = new Date().getFullYear();
-        let detectedMonth = new Date().getMonth() + 1;
-
-        const titleText = String(sheetJson[0]?.[0] || '');
-        const matchTitle = titleText.match(/(\d{4})\s+(\d{1,2})/);
-        if (matchTitle) {
-          detectedYear = parseInt(matchTitle[1], 10);
-          detectedMonth = parseInt(matchTitle[2], 10);
-        } else {
-          const subText = String(sheetJson[1]?.[0] || '');
-          const matchSub = subText.match(/THÁNG\s*(\d{1,2})/i);
-          if (matchSub) {
-            detectedMonth = parseInt(matchSub[1], 10);
-          }
-        }
-
-        const newEmployees = [...existingEmployees];
-        const newAttendance = {};
-
-        let empSttCounter = newEmployees.length + 1;
-        for (let r = 4; r < sheetJson.length; r += 2) {
-          const rowStart = sheetJson[r];
-          if (!rowStart || rowStart.length === 0) continue;
-
-          const stt = rowStart[0];
-          const nameRaw = rowStart[1];
-          if (!nameRaw) continue;
-
-          const name = String(nameRaw).trim().replace('\n', ' ');
-
-          let emp = newEmployees.find(e => e.name.toLowerCase() === name.toLowerCase());
-          if (!emp) {
-            let branchId = 'CN1';
-            if (name.includes('(LT)') || name.includes('(Lt)')) branchId = 'CN2';
-            else if (name.includes('(LK)')) branchId = 'CN3';
-            else if (name.includes('(XL)')) branchId = 'CN4';
-            else if (name.includes('(P)')) branchId = 'CN5';
-
-            emp = {
-              id: `emp_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-              stt: typeof stt === 'number' ? stt : empSttCounter++,
-              name: name,
-              branchId: branchId,
-              type: 'fulltime'
-            };
-            newEmployees.push(emp);
-          }
-
-          if (!newAttendance[emp.id]) {
-            newAttendance[emp.id] = {};
-          }
-
-          const rowEnd = sheetJson[r + 1] || [];
-          const formattedMonthStr = String(detectedMonth).padStart(2, '0');
-
-          // Read Front Section (Ca 1)
-          dayIndices.forEach(({ day, colIdx }) => {
-            const dayStr = String(day).padStart(2, '0');
-            const dateKey = `${detectedYear}-${formattedMonthStr}-${dayStr}`;
-
-            let valStart = rowStart[colIdx];
-            let valEnd = rowEnd[colIdx];
-
-            let startStr = '';
-            let endStr = '';
-
-            if (valStart === 'OFF' || valEnd === 'OFF') {
-              startStr = 'OFF';
-            } else {
-              if (valStart !== undefined && valStart !== null) startStr = String(valStart).trim();
-              if (valEnd !== undefined && valEnd !== null) endStr = String(valEnd).trim();
-            }
-
-            if (startStr || endStr) {
-              newAttendance[emp.id][dateKey] = {
-                ...newAttendance[emp.id][dateKey],
-                start: startStr,
-                end: endStr
-              };
-            }
-          });
-
-          // Read Back Section (Ca 2)
-          backDayIndices.forEach(({ day, colIdx }) => {
-            const dayStr = String(day).padStart(2, '0');
-            const dateKey = `${detectedYear}-${formattedMonthStr}-${dayStr}`;
-
-            let valStart2 = rowStart[colIdx];
-            let valEnd2 = rowEnd[colIdx];
-
-            let start2Str = '';
-            let end2Str = '';
-
-            if (valStart2 !== undefined && valStart2 !== null) start2Str = String(valStart2).trim();
-            if (valEnd2 !== undefined && valEnd2 !== null) end2Str = String(valEnd2).trim();
-
-            if (start2Str || end2Str) {
-              newAttendance[emp.id][dateKey] = {
-                ...newAttendance[emp.id][dateKey],
-                start2: start2Str,
-                end2: end2Str
-              };
-              // If employee has Ca 2, auto mark as parttime
-              emp.type = 'parttime';
-            }
-          });
-        }
-
-        resolve({
-          year: detectedYear,
-          month: detectedMonth,
-          employees: newEmployees,
-          attendance: newAttendance
-        });
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = (err) => reject(err);
-    reader.readAsArrayBuffer(file);
-  });
+  // Download buffer in browser natively with ExcelJS
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
 };
