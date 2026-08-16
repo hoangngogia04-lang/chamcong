@@ -317,9 +317,16 @@ export const exportToExcel = (year, month, employees, attendanceData, branchPref
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
   // Dynamic file name depending on branchPrefix or Admin
+  let prefixStr = '';
+  if (typeof branchPrefix === 'string') {
+    prefixStr = branchPrefix.trim();
+  } else if (branchPrefix && typeof branchPrefix === 'object' && branchPrefix.name) {
+    prefixStr = String(branchPrefix.name).trim().replace(/\s+/g, '_');
+  }
+
   let fileName = `Cham_Cong_Thang_${formattedMonthStr}.xlsx`;
-  if (branchPrefix) {
-    fileName = `${branchPrefix}_Cham_Cong_Thang_${formattedMonthStr}.xlsx`;
+  if (prefixStr && prefixStr !== '[object Object]') {
+    fileName = `${prefixStr}_Cham_Cong_Thang_${formattedMonthStr}.xlsx`;
   }
 
   XLSX.writeFile(wb, fileName);

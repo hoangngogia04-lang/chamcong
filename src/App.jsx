@@ -231,7 +231,12 @@ export default function App() {
 
   // Excel Export Handler
   const handleExport = () => {
-    exportToExcel(year, month, employees, branches, attendance);
+    const activeBranch = branches.find(b => b.id === activeBranchId);
+    const branchPrefix = activeBranchId === 'ALL'
+      ? 'Tat_Ca_Chi_Nhanh'
+      : (activeBranch ? activeBranch.name.replace(/\s+/g, '_') : `Chi_Nhanh_${activeBranchId}`);
+
+    exportToExcel(year, month, visibleEmployees, attendance, branchPrefix);
   };
 
   // Employee CRUD handlers
