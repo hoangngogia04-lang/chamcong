@@ -30,14 +30,12 @@ export default function WeeklyRosterView({
     { key: '17h - 22h', label: '17h - 22h', bg: 'linear-gradient(135deg, #6d28d9, #8b5cf6)' }
   ];
 
-  // Auto-derive roster from attendance data if no custom roster exists for this week
-  const hasCustomRoster = Object.values(rosterData).some(slotMap =>
-    Object.values(slotMap || {}).some(arr => Array.isArray(arr) && arr.length > 0)
-  );
+  // Check if rosterData is explicitly set or cleared by manager
+  const isCustomRoster = Boolean(rosterData && (rosterData._isCustom || Object.keys(rosterData).length > 0));
 
   let effectiveRosterData = rosterData;
 
-  if (!hasCustomRoster && attendance && Object.keys(attendance).length > 0) {
+  if (!isCustomRoster && attendance && Object.keys(attendance).length > 0) {
     const derived = {
       '8h - 13h': {},
       '13h - 17h': {},
@@ -101,7 +99,7 @@ export default function WeeklyRosterView({
     if (!editingSlot) return;
     const { slotKey, dayKey } = editingSlot;
 
-    const newRosterData = { ...effectiveRosterData };
+    const newRosterData = { ...effectiveRosterData, _isCustom: true };
     if (!newRosterData[slotKey]) newRosterData[slotKey] = {};
     newRosterData[slotKey][dayKey] = selectedEmpIds;
 
@@ -113,6 +111,7 @@ export default function WeeklyRosterView({
   const handleClearEntireWeek = () => {
     if (window.confirm(`Bạn có chắc chắn muốn xóa TOÀN BỘ lịch ca của Tuần ${weekNum} (Chi nhánh ${branchObj?.name || branchId}) không?`)) {
       const emptyRoster = {
+        _isCustom: true,
         '8h - 13h': {},
         '13h - 17h': {},
         '17h - 22h': {}
@@ -125,7 +124,7 @@ export default function WeeklyRosterView({
   const handleClearDay = (e, dayKey, dayTitle) => {
     e.stopPropagation();
     if (window.confirm(`Bạn có muốn xóa toàn bộ ca làm trong ngày ${dayTitle}?`)) {
-      const newRosterData = { ...effectiveRosterData };
+      const newRosterData = { ...effectiveRosterData, _isCustom: true };
       shiftSlots.forEach(s => {
         if (!newRosterData[s.key]) newRosterData[s.key] = {};
         newRosterData[s.key][dayKey] = [];
