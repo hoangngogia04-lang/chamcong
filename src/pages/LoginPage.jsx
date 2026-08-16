@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { LogIn, Lock, User, ShieldCheck, Building } from 'lucide-react';
+import { LogIn, Lock, User, ShieldCheck, Building, Globe } from 'lucide-react';
+import { translations } from '../utils/language';
 
 export default function LoginPage({
   users,
   branches,
-  onLoginSuccess
+  onLoginSuccess,
+  lang = 'vi',
+  setLang
 }) {
+  const t = translations[lang] || translations.vi;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -16,20 +20,20 @@ export default function LoginPage({
     setErrorMsg('');
 
     if (!username.trim() || !password.trim()) {
-      setErrorMsg('Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu!');
+      setErrorMsg(lang === 'zh' ? '請填寫完整的帳號與密碼！' : 'Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu!');
       return;
     }
 
     const targetUser = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
     if (!targetUser) {
-      setErrorMsg('Tên đăng nhập hoặc mật khẩu không chính xác!');
+      setErrorMsg(lang === 'zh' ? '帳號或密碼不正確！' : 'Tên đăng nhập hoặc mật khẩu không chính xác!');
       return;
     }
 
     // Verify password
     const validPassword = targetUser.password || '123';
     if (validPassword !== password) {
-      setErrorMsg('Tên đăng nhập hoặc mật khẩu không chính xác!');
+      setErrorMsg(lang === 'zh' ? '帳號或密碼不正確！' : 'Tên đăng nhập hoặc mật khẩu không chính xác!');
       return;
     }
 
@@ -55,18 +59,43 @@ export default function LoginPage({
         boxShadow: 'var(--shadow-lg)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '1.5rem'
+        gap: '1.5rem',
+        position: 'relative'
       }}>
+        {/* Top Right Language Switcher Button */}
+        {setLang && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setLang(lang === 'vi' ? 'zh' : 'vi')}
+            style={{
+              position: 'absolute',
+              top: '1rem',
+              right: '1rem',
+              padding: '0.35rem 0.65rem',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              color: 'var(--accent-cyan)',
+              borderColor: 'var(--accent-cyan)',
+              background: 'rgba(6, 182, 212, 0.1)'
+            }}
+            title="Chuyển đổi Ngôn ngữ / 切換語言"
+          >
+            <Globe size={14} />
+            <span>{lang === 'vi' ? '🇹🇼 繁體中文' : '🇻🇳 Tiếng Việt'}</span>
+          </button>
+        )}
+
         {/* Header Branding */}
-        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.65rem' }}>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.65rem', marginTop: '0.5rem' }}>
           <div className="brand-icon" style={{ width: '60px', height: '60px', borderRadius: 'var(--radius-lg)' }}>
             <Building size={32} />
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)' }}>
-            Hệ Thống Chấm Công
+            {t.loginTitle}
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-            Vui lòng đăng nhập tài khoản Quản lý hoặc Admin
+            {t.loginSub}
           </p>
         </div>
 
@@ -90,12 +119,12 @@ export default function LoginPage({
           <div className="form-group">
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <User size={15} />
-              <span>Tên Đăng Nhập (Username):</span>
+              <span>{t.username}:</span>
             </label>
             <input
               type="text"
               className="form-control"
-              placeholder="Nhập tên đăng nhập..."
+              placeholder={lang === 'zh' ? '請輸入帳號...' : 'Nhập tên đăng nhập...'}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               style={{ fontSize: '0.95rem', padding: '0.75rem' }}
@@ -107,12 +136,12 @@ export default function LoginPage({
           <div className="form-group">
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <Lock size={15} />
-              <span>Mật Khẩu:</span>
+              <span>{t.password}:</span>
             </label>
             <input
               type="password"
               className="form-control"
-              placeholder="Nhập mật khẩu..."
+              placeholder={lang === 'zh' ? '請輸入密碼...' : 'Nhập mật khẩu...'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={{ fontSize: '0.95rem', padding: '0.75rem' }}
@@ -129,7 +158,7 @@ export default function LoginPage({
               style={{ cursor: 'pointer', width: '16px', height: '16px' }}
             />
             <label htmlFor="remember" style={{ cursor: 'pointer', userSelect: 'none' }}>
-              Ghi nhớ đăng nhập trên thiết bị này
+              {t.rememberMe}
             </label>
           </div>
 
@@ -140,7 +169,7 @@ export default function LoginPage({
             style={{ padding: '0.8rem', fontSize: '1rem', marginTop: '0.5rem', width: '100%' }}
           >
             <LogIn size={20} />
-            <span>Đăng Nhập Hàng Ngày</span>
+            <span>{t.loginBtn}</span>
           </button>
         </form>
       </div>

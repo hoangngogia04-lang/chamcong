@@ -285,6 +285,8 @@ export default function App() {
         users={users}
         branches={branches}
         onLoginSuccess={handleLoginSuccess}
+        lang={lang}
+        setLang={setLang}
       />
     );
   }
@@ -423,17 +425,6 @@ export default function App() {
           lang={lang}
         />
       )}
-
-      {/* Login Modal */}
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        users={users}
-        branches={branches}
-        onLoginSuccess={handleLoginSuccess}
-        lang={lang}
-        setLang={setLang}
-      />
     </div>
   );
 }
