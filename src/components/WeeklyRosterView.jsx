@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, Users, Plus, Trash2, Check, X, Edit3, Shield, Clock } from 'lucide-react';
+import { getWeekDaysForMonthAndWeek } from '../utils/dateUtils';
 
 export default function WeeklyRosterView({
   year,
@@ -20,33 +21,8 @@ export default function WeeklyRosterView({
   const [editingSlot, setEditingSlot] = useState(null); // { slotKey: '8h - 13h', dayKey: 'Mon', dayName: 'Thứ 2 (22/08)' }
   const [selectedEmpIds, setSelectedEmpIds] = useState([]);
 
-  // Calculate specific calendar dates for weekNum
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const startDayNum = (weekNum - 1) * 7 + 1;
-  const formattedMonthStr = String(month).padStart(2, '0');
-
-  const baseDaysList = [
-    { key: 'Mon', label: 'Thứ 2', offset: 0 },
-    { key: 'Tue', label: 'Thứ 3', offset: 1 },
-    { key: 'Wed', label: 'Thứ 4', offset: 2 },
-    { key: 'Thu', label: 'Thứ 5', offset: 3 },
-    { key: 'Fri', label: 'Thứ 6', offset: 4 },
-    { key: 'Sat', label: 'Thứ 7', offset: 5 },
-    { key: 'Sun', label: 'Chủ Nhật', offset: 6 }
-  ];
-
-  const daysList = baseDaysList.map(d => {
-    const dayNum = startDayNum + d.offset;
-    const isOutOfRange = dayNum > daysInMonth;
-    const dateStr = !isOutOfRange ? `${String(dayNum).padStart(2, '0')}/${formattedMonthStr}` : '';
-    return {
-      ...d,
-      dayNum,
-      dateStr,
-      fullTitle: dateStr ? `${d.label} (${dateStr})` : d.label,
-      isWeekend: d.key === 'Sat' || d.key === 'Sun'
-    };
-  });
+  // Calculate precise calendar dates for weekNum matching real calendar
+  const daysList = getWeekDaysForMonthAndWeek(year, month, weekNum);
 
   const shiftSlots = [
     { key: '8h - 13h', label: '8h - 13h', bg: 'linear-gradient(135deg, #059669, #10b981)' },
@@ -68,15 +44,9 @@ export default function WeeklyRosterView({
       '17h - 22h': {}
     };
 
-    const daysListKeys = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-    for (let day = startDayNum; day <= Math.min(daysInMonth, weekNum * 7); day++) {
-      const d = new Date(year, month - 1, day);
-      const dayOfWeek = d.getDay();
-      const dayKey = daysListKeys[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
-
-      const dayStr = String(day).padStart(2, '0');
-      const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
+    daysList.forEach(dObj => {
+      const dayKey = dObj.key;
+      const dateKey = dObj.dateKey;
 
       branchEmployees.forEach(emp => {
         const empAttMap = attendance[emp.id] || {};
@@ -107,7 +77,7 @@ export default function WeeklyRosterView({
           if (!derived['17h - 22h'][dayKey].includes(emp.id)) derived['17h - 22h'][dayKey].push(emp.id);
         }
       });
-    }
+    });
 
     effectiveRosterData = derived;
   }

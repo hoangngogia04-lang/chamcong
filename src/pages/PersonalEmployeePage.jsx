@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check, Grid } from 'lucide-react';
 import { getDaysInMonth } from '../utils/excelHelper';
+import { getCurrentWeekOfMonth } from '../utils/dateUtils';
 import WeeklyRosterView from '../components/WeeklyRosterView';
 
 export default function PersonalEmployeePage({
@@ -19,16 +20,8 @@ export default function PersonalEmployeePage({
   onUpdateUser,
   onUpdateEmployee
 }) {
-  const getCurrentWeekOfMonth = (d = new Date().getDate()) => {
-    if (d <= 7) return 1;
-    if (d <= 14) return 2;
-    if (d <= 21) return 3;
-    if (d <= 28) return 4;
-    return 5;
-  };
-
   const [selectedView, setSelectedView] = useState('weeklyRoster'); // Mặc định vào thẳng Bảng Sắp Ca Chi Nhánh khi nhân viên đăng nhập!
-  const [weekNum, setWeekNum] = useState(() => getCurrentWeekOfMonth()); // Mặc định tự động chọn Tuần hiện tại!
+  const [weekNum, setWeekNum] = useState(() => getCurrentWeekOfMonth(year, month)); // Mặc định tự động chọn Tuần hiện tại chuẩn Lịch Vạn Niên!
 
   // Find linked employee record safely
   const matchedEmp = employees.find(e => e.id === currentUser?.employeeId || (e.name && currentUser?.fullName && e.name.toLowerCase() === currentUser.fullName.toLowerCase()));

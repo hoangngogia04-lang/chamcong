@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, Building, ChevronLeft, ChevronRight, Save, CheckCircle2 } from 'lucide-react';
+import { getCurrentWeekOfMonth } from '../utils/dateUtils';
 import WeeklyRosterView from '../components/WeeklyRosterView';
 
 export default function WeeklyRosterPage({
@@ -21,16 +22,8 @@ export default function WeeklyRosterPage({
     isAdmin ? branches[0]?.id || 'CN1' : currentUser?.branchId || 'CN1'
   );
 
-  const getCurrentWeekOfMonth = (d = new Date().getDate()) => {
-    if (d <= 7) return 1;
-    if (d <= 14) return 2;
-    if (d <= 21) return 3;
-    if (d <= 28) return 4;
-    return 5;
-  };
-
-  // Active Week state (Tự động chọn tuần hiện tại)
-  const [weekNum, setWeekNum] = useState(() => getCurrentWeekOfMonth());
+  // Active Week state (Tự động chọn tuần hiện tại chuẩn 100% Lịch Vạn Niên)
+  const [weekNum, setWeekNum] = useState(() => getCurrentWeekOfMonth(year, month));
 
   const activeBranch = branches.find(b => b.id === activeBranchId) || branches[0];
 
