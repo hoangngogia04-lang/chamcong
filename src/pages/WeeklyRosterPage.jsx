@@ -20,8 +20,16 @@ export default function WeeklyRosterPage({
     isAdmin ? branches[0]?.id || 'CN1' : currentUser?.branchId || 'CN1'
   );
 
-  // Active Week state (Week 1..5)
-  const [weekNum, setWeekNum] = useState(1);
+  const getCurrentWeekOfMonth = (d = new Date().getDate()) => {
+    if (d <= 7) return 1;
+    if (d <= 14) return 2;
+    if (d <= 21) return 3;
+    if (d <= 28) return 4;
+    return 5;
+  };
+
+  // Active Week state (Tự động chọn tuần hiện tại)
+  const [weekNum, setWeekNum] = useState(() => getCurrentWeekOfMonth());
 
   const activeBranch = branches.find(b => b.id === activeBranchId) || branches[0];
 

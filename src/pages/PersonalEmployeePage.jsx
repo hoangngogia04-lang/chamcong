@@ -19,8 +19,16 @@ export default function PersonalEmployeePage({
   onUpdateUser,
   onUpdateEmployee
 }) {
-  const [selectedView, setSelectedView] = useState('list'); // 'list' | 'table' | 'weeklyRoster'
-  const [weekNum, setWeekNum] = useState(1);
+  const getCurrentWeekOfMonth = (d = new Date().getDate()) => {
+    if (d <= 7) return 1;
+    if (d <= 14) return 2;
+    if (d <= 21) return 3;
+    if (d <= 28) return 4;
+    return 5;
+  };
+
+  const [selectedView, setSelectedView] = useState('weeklyRoster'); // Mặc định vào thẳng Bảng Sắp Ca Chi Nhánh khi nhân viên đăng nhập!
+  const [weekNum, setWeekNum] = useState(() => getCurrentWeekOfMonth()); // Mặc định tự động chọn Tuần hiện tại!
 
   // Find linked employee record safely
   const matchedEmp = employees.find(e => e.id === currentUser?.employeeId || (e.name && currentUser?.fullName && e.name.toLowerCase() === currentUser.fullName.toLowerCase()));
