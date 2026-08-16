@@ -262,7 +262,7 @@ export default function PersonalEmployeePage({
                   {branchObj?.name || 'Chi nhánh'}
                 </span>
                 <span className={`shift-tag ${isPartTime ? 'shift-afternoon' : 'shift-morning'}`} style={{ fontSize: '0.8rem' }}>
-                  {isPartTime ? '⏱️ Part-Time (Ca Gãy)' : '👔 Full-Time (Chính Thức)'}
+                  {isPartTime ? '⏱️ Part-Time' : '👔 Full-Time'}
                 </span>
               </div>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '0.35rem', margin: 0 }}>
@@ -454,6 +454,27 @@ export default function PersonalEmployeePage({
                 const isOff = startVal === 'OFF';
                 const hasShift = Boolean(startVal || endVal);
 
+                let dayOvertime = 0;
+                let dayDurationHours = 0;
+
+                if (hasShift && !isOff) {
+                  let dMins = 0;
+                  if (startVal && endVal && startVal.includes(':') && endVal.includes(':')) {
+                    const [h1, m1] = startVal.split(':').map(Number);
+                    const [h2, m2] = endVal.split(':').map(Number);
+                    dMins += Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+                  }
+                  if (start2Val && end2Val && start2Val.includes(':') && end2Val.includes(':')) {
+                    const [h1, m1] = start2Val.split(':').map(Number);
+                    const [h2, m2] = end2Val.split(':').map(Number);
+                    dMins += Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+                  }
+                  dayDurationHours = Math.round((dMins / 60) * 10) / 10;
+                  if (!isPartTime && dMins > 540) {
+                    dayOvertime = Math.round(((dMins - 540) / 60) * 10) / 10;
+                  }
+                }
+
                 return (
                   <div
                     key={day}
@@ -492,17 +513,15 @@ export default function PersonalEmployeePage({
                           <Lock size={12} /> Chưa tới
                         </span>
                       ) : isOff ? (
-                        <span className="shift-tag shift-night" style={{ background: 'rgba(244, 63, 94, 0.2)', color: 'var(--accent-rose)' }}>
-                          ☕ Nghỉ (OFF)
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-rose)', background: 'rgba(244, 63, 94, 0.15)', padding: '0.18rem 0.55rem', borderRadius: 'var(--radius-sm)' }}>
+                          OFF
                         </span>
                       ) : hasShift ? (
-                        <span className="shift-tag shift-morning">
-                          {start2Val ? '🔄 Ca Gãy' : '☀️ Đã Xếp Ca'}
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-emerald)', background: 'rgba(16, 185, 129, 0.15)', padding: '0.18rem 0.55rem', borderRadius: 'var(--radius-sm)' }}>
+                          {dayDurationHours}h {dayOvertime > 0 ? `(+${dayOvertime}h OT)` : ''}
                         </span>
                       ) : (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-                          Chưa phân ca
-                        </span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>-</span>
                       )}
                     </div>
 
@@ -516,14 +535,12 @@ export default function PersonalEmployeePage({
                         ) : hasShift ? (
                           <>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                              <span style={{ color: 'var(--text-muted)' }}>Ca 1 (Chính):</span>
-                              <strong style={{ color: 'var(--accent-cyan)' }}>{startVal} - {endVal}</strong>
+                              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>Ca 1: {startVal} - {endVal}</span>
                             </div>
 
                             {start2Val && end2Val && (
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.9rem', borderTop: '1px dashed var(--border-color)', paddingTop: '0.35rem', marginTop: '0.2rem' }}>
-                                <span style={{ color: 'var(--accent-purple)', fontWeight: 600 }}>Ca 2 (Phụ):</span>
-                                <strong style={{ color: 'var(--accent-purple)' }}>{start2Val} - {end2Val}</strong>
+                                <span style={{ color: 'var(--accent-purple)', fontWeight: 600 }}>Ca 2: {start2Val} - {end2Val}</span>
                               </div>
                             )}
                           </>
