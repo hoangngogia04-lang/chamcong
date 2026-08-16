@@ -17,23 +17,41 @@ export default function WeeklyRosterView({
   const branchEmployees = employees.filter(e => e.branchId === branchId);
 
   // Modal for editing employees in a specific slot
-  const [editingSlot, setEditingSlot] = useState(null); // { slotKey: '8h - 13h', dayKey: 'Mon', dayName: 'Thứ 2' }
+  const [editingSlot, setEditingSlot] = useState(null); // { slotKey: '8h - 13h', dayKey: 'Mon', dayName: 'Thứ 2 (22/08)' }
   const [selectedEmpIds, setSelectedEmpIds] = useState([]);
 
-  const daysList = [
-    { key: 'Mon', label: 'Thứ 2' },
-    { key: 'Tue', label: 'Thứ 3' },
-    { key: 'Wed', label: 'Thứ 4' },
-    { key: 'Thu', label: 'Thứ 5' },
-    { key: 'Fri', label: 'Thứ 6' },
-    { key: 'Sat', label: 'Thứ 7' },
-    { key: 'Sun', label: 'Chủ Nhật' }
+  // Calculate specific calendar dates for weekNum
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const startDayNum = (weekNum - 1) * 7 + 1;
+  const formattedMonthStr = String(month).padStart(2, '0');
+
+  const baseDaysList = [
+    { key: 'Mon', label: 'Thứ 2', offset: 0 },
+    { key: 'Tue', label: 'Thứ 3', offset: 1 },
+    { key: 'Wed', label: 'Thứ 4', offset: 2 },
+    { key: 'Thu', label: 'Thứ 5', offset: 3 },
+    { key: 'Fri', label: 'Thứ 6', offset: 4 },
+    { key: 'Sat', label: 'Thứ 7', offset: 5 },
+    { key: 'Sun', label: 'Chủ Nhật', offset: 6 }
   ];
 
+  const daysList = baseDaysList.map(d => {
+    const dayNum = startDayNum + d.offset;
+    const isOutOfRange = dayNum > daysInMonth;
+    const dateStr = !isOutOfRange ? `${String(dayNum).padStart(2, '0')}/${formattedMonthStr}` : '';
+    return {
+      ...d,
+      dayNum,
+      dateStr,
+      fullTitle: dateStr ? `${d.label} (${dateStr})` : d.label,
+      isWeekend: d.key === 'Sat' || d.key === 'Sun'
+    };
+  });
+
   const shiftSlots = [
-    { key: '8h - 13h', label: '8h - 13h', bg: '#D32F2F' },
-    { key: '13h - 17h', label: '13h - 17h', bg: '#C62828' },
-    { key: '17h - 22h', label: '17h - 22h', bg: '#B71C1C' }
+    { key: '8h - 13h', label: '8h - 13h', bg: 'linear-gradient(135deg, #059669, #10b981)' },
+    { key: '13h - 17h', label: '13h - 17h', bg: 'linear-gradient(135deg, #d97706, #f59e0b)' },
+    { key: '17h - 22h', label: '17h - 22h', bg: 'linear-gradient(135deg, #6d28d9, #8b5cf6)' }
   ];
 
   // Auto-derive roster from attendance data if no custom roster exists for this week
@@ -50,14 +68,9 @@ export default function WeeklyRosterView({
       '17h - 22h': {}
     };
 
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const startDay = (weekNum - 1) * 7 + 1;
-    const endDay = Math.min(daysInMonth, weekNum * 7);
-
     const daysListKeys = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const formattedMonthStr = String(month).padStart(2, '0');
 
-    for (let day = startDay; day <= endDay; day++) {
+    for (let day = startDayNum; day <= Math.min(daysInMonth, weekNum * 7); day++) {
       const d = new Date(year, month - 1, day);
       const dayOfWeek = d.getDay();
       const dayKey = daysListKeys[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
@@ -150,29 +163,32 @@ export default function WeeklyRosterView({
         </div>
       </div>
 
-      {/* Main Roster Matrix Table - Exactly matching screenshot design */}
-      <div className="table-responsive" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid #30363D', overflowX: 'auto', WebkitOverflowScrolling: 'touch', boxShadow: 'var(--shadow-md)' }}>
-        <table className="roster-table" style={{ width: '100%', borderCollapse: 'collapse', background: '#0D1117', color: '#FFFFFF', fontFamily: 'sans-serif' }}>
+      {/* Main Roster Matrix Table - Perfectly Theme-Integrated Design */}
+      <div className="table-responsive" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', overflowX: 'auto', WebkitOverflowScrolling: 'touch', boxShadow: 'var(--shadow-md)', background: 'var(--bg-card)' }}>
+        <table className="roster-table" style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-main)', fontFamily: 'var(--font-primary)' }}>
           <thead>
             <tr>
               {/* Top Left Empty Cell - Fixed Sticky */}
-              <th style={{ width: '100px', minWidth: '100px', background: '#161B22', border: '1px solid #30363D', position: 'sticky', left: 0, zIndex: 20, boxShadow: '3px 0 8px rgba(0,0,0,0.5)' }}></th>
-              {/* Day Headers (Cyan/Teal background #2B7A78) */}
+              <th style={{ width: '105px', minWidth: '105px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', position: 'sticky', left: 0, zIndex: 20, boxShadow: '3px 0 8px rgba(0,0,0,0.15)' }}></th>
+              {/* Day Headers with Specific Dates */}
               {daysList.map(d => (
                 <th
                   key={d.key}
                   style={{
-                    background: '#2B7A78',
-                    color: '#FFFFFF',
+                    background: d.isWeekend ? 'rgba(244, 63, 94, 0.12)' : 'var(--bg-input)',
+                    color: d.isWeekend ? 'var(--accent-rose)' : 'var(--text-main)',
                     padding: '0.75rem 0.5rem',
-                    fontSize: '0.95rem',
-                    fontWeight: 700,
                     textAlign: 'center',
-                    border: '1px solid #30363D',
-                    minWidth: '100px'
+                    border: '1px solid var(--border-color)',
+                    minWidth: '115px'
                   }}
                 >
-                  {d.label}
+                  <div style={{ fontSize: '0.98rem', fontWeight: 700 }}>{d.label}</div>
+                  {d.dateStr ? (
+                    <div style={{ fontSize: '0.78rem', fontWeight: 600, opacity: 0.85, marginTop: '2px', color: d.isWeekend ? 'var(--accent-rose)' : 'var(--accent-cyan)' }}>
+                      ({d.dateStr})
+                    </div>
+                  ) : null}
                 </th>
               ))}
             </tr>
@@ -181,24 +197,24 @@ export default function WeeklyRosterView({
           <tbody>
             {shiftSlots.map(slot => (
               <tr key={slot.key}>
-                {/* Left Header Column (Red Background #D32F2F) - STICKY ON HORIZONTAL SCROLL! */}
+                {/* Left Header Column (Shift Gradient Badge) - STICKY ON HORIZONTAL SCROLL! */}
                 <td
                   style={{
-                    background: '#D32F2F',
+                    background: slot.bg,
                     color: '#FFFFFF',
                     fontWeight: 700,
                     fontSize: '1rem',
                     textAlign: 'center',
                     verticalAlign: 'middle',
                     padding: '0.85rem 0.4rem',
-                    border: '1px solid #30363D',
+                    border: '1px solid var(--border-color)',
                     whiteSpace: 'nowrap',
                     position: 'sticky',
                     left: 0,
                     zIndex: 10,
-                    boxShadow: '3px 0 8px rgba(0,0,0,0.5)',
-                    width: '100px',
-                    minWidth: '100px'
+                    boxShadow: '3px 0 8px rgba(0,0,0,0.2)',
+                    width: '105px',
+                    minWidth: '105px'
                   }}
                 >
                   {slot.label}
@@ -212,19 +228,19 @@ export default function WeeklyRosterView({
                   return (
                     <td
                       key={d.key}
-                      onClick={() => handleOpenEdit(slot.key, d.key, d.label)}
-                      title={readOnly ? undefined : `Sắp ca ${slot.label} - ${d.label}`}
+                      onClick={() => handleOpenEdit(slot.key, d.key, d.fullTitle)}
+                      title={readOnly ? undefined : `Sắp ca ${slot.label} - ${d.fullTitle}`}
                       style={{
-                        background: '#0D1117',
-                        border: '1px solid #30363D',
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border-color)',
                         verticalAlign: 'top',
                         padding: '0.65rem 0.5rem',
                         cursor: readOnly ? 'default' : 'pointer',
                         transition: 'background 0.2s',
                         height: '110px'
                       }}
-                      onMouseEnter={(e) => { if (!readOnly) e.currentTarget.style.background = '#161B22'; }}
-                      onMouseLeave={(e) => { if (!readOnly) e.currentTarget.style.background = '#0D1117'; }}
+                      onMouseEnter={(e) => { if (!readOnly) e.currentTarget.style.background = 'var(--bg-card-hover)'; }}
+                      onMouseLeave={(e) => { if (!readOnly) e.currentTarget.style.background = 'var(--bg-input)'; }}
                     >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minHeight: '100%' }}>
                         {scheduledEmps.length > 0 ? (
@@ -232,26 +248,27 @@ export default function WeeklyRosterView({
                             <div
                               key={emp.id}
                               style={{
-                                background: '#161B22',
-                                color: '#E6EDF3',
+                                background: 'var(--bg-card)',
+                                color: 'var(--text-main)',
                                 padding: '0.35rem 0.55rem',
-                                borderRadius: '4px',
+                                borderRadius: 'var(--radius-sm)',
                                 fontSize: '0.9rem',
                                 fontWeight: 600,
-                                border: '1px solid #30363D',
+                                border: '1px solid var(--border-color)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'space-between'
+                                justifyContent: 'space-between',
+                                boxShadow: 'var(--shadow-sm)'
                               }}
                             >
                               <span>{emp.name}</span>
-                              <span style={{ fontSize: '0.7rem', color: emp.type === 'parttime' ? '#A371F7' : '#3FB950' }}>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: emp.type === 'parttime' ? 'var(--accent-purple)' : 'var(--accent-emerald)' }}>
                                 {emp.type === 'parttime' ? 'PT' : 'FT'}
                               </span>
                             </div>
                           ))
                         ) : (
-                          <div style={{ color: '#484F58', fontSize: '0.8rem', textAlign: 'center', margin: 'auto 0' }}>
+                          <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', margin: 'auto 0' }}>
                             {readOnly ? '-' : '+ Xếp ca'}
                           </div>
                         )}
