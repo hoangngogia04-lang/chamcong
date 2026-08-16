@@ -85,6 +85,9 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('quan_ly_cham_cong_theme') || 'light';
   });
+  const [lang, setLang] = useState(() => {
+    return localStorage.getItem('quan_ly_cham_cong_lang') || 'vi';
+  });
   const [searchQuery, setSearchQuery] = useState('');
 
   // Shift Edit Modal
@@ -140,6 +143,10 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('quan_ly_cham_cong_theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('quan_ly_cham_cong_lang', lang);
+  }, [lang]);
 
   const isAdmin = currentUser?.role === 'admin';
 
@@ -297,6 +304,8 @@ export default function App() {
         weeklyRosters={weeklyRosters}
         theme={theme}
         setTheme={setTheme}
+        lang={lang}
+        setLang={setLang}
         onLogout={handleLogout}
         onUpdateUser={handleUpdateUser}
         onUpdateEmployee={handleUpdateEmployee}
@@ -317,6 +326,8 @@ export default function App() {
         setActivePage={setActivePage}
         theme={theme}
         setTheme={setTheme}
+        lang={lang}
+        setLang={setLang}
         onExport={handleExport}
         onLogout={handleLogout}
       />
@@ -364,6 +375,7 @@ export default function App() {
             attendance={attendance}
             currentUser={currentUser}
             weeklyRosters={weeklyRosters}
+            lang={lang}
             onSaveRoster={handleSaveRoster}
           />
         )}

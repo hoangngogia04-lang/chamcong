@@ -13,6 +13,7 @@ export default function WeeklyRosterPage({
   attendance = {},
   currentUser,
   weeklyRosters = {},
+  lang = 'vi',
   onSaveRoster
 }) {
   const isAdmin = currentUser?.role === 'admin';
@@ -143,6 +144,7 @@ export default function WeeklyRosterPage({
           employees={employees}
           attendance={attendance}
           rosterData={currentRosterData}
+          lang={lang}
           onSaveRoster={onSaveRoster}
           readOnly={false}
         />

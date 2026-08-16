@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check, Grid } from 'lucide-react';
+import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check, Grid, Globe } from 'lucide-react';
 import { getDaysInMonth } from '../utils/excelHelper';
 import { getCurrentWeekOfMonth } from '../utils/dateUtils';
 import WeeklyRosterView from '../components/WeeklyRosterView';
@@ -16,6 +16,8 @@ export default function PersonalEmployeePage({
   weeklyRosters = {},
   theme,
   setTheme,
+  lang = 'vi',
+  setLang,
   onLogout,
   onUpdateUser,
   onUpdateEmployee
@@ -219,6 +221,24 @@ export default function PersonalEmployeePage({
             {theme === 'dark' ? <Sun size={18} className="text-amber" /> : <Moon size={18} className="text-cyan" />}
           </button>
 
+          {/* Language Switcher Toggle Button (🇻🇳 Tiếng Việt ↔ 🇹🇼 繁體中文) */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setLang && setLang(lang === 'vi' ? 'zh' : 'vi')}
+            title="Chuyển đổi Ngôn ngữ / 切換語言 (Việt / 繁體中文)"
+            style={{
+              padding: '0.45rem 0.75rem',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              color: 'var(--accent-cyan)',
+              borderColor: 'var(--accent-cyan)',
+              background: 'rgba(6, 182, 212, 0.1)'
+            }}
+          >
+            <Globe size={16} />
+            <span>{lang === 'vi' ? '🇹🇼 繁體中文' : '🇻🇳 Tiếng Việt'}</span>
+          </button>
+
           <button
             className="btn btn-secondary"
             onClick={onLogout}
@@ -382,6 +402,7 @@ export default function PersonalEmployeePage({
               employees={employees}
               attendance={attendance}
               rosterData={(weeklyRosters && weeklyRosters[`${employee.branchId}_${year}_${month}_W${weekNum}`]) || {}}
+              lang={lang}
               readOnly={true}
             />
           </div>

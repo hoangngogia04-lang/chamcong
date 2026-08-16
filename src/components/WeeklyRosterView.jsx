@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Users, Plus, Trash2, Check, X, Edit3, Shield, Clock, RotateCcw } from 'lucide-react';
 import { getWeekDaysForMonthAndWeek } from '../utils/dateUtils';
+import { translations } from '../utils/language';
 
 export default function WeeklyRosterView({
   year,
@@ -11,9 +12,12 @@ export default function WeeklyRosterView({
   employees = [],
   attendance = {},
   rosterData = {},
+  lang = 'vi',
   onSaveRoster,
   readOnly = false
 }) {
+  const t = translations[lang] || translations.vi;
+
   // Filter employees belonging to this branch
   const branchEmployees = employees.filter(e => e.branchId === branchId);
 
@@ -22,12 +26,17 @@ export default function WeeklyRosterView({
   const [selectedEmpIds, setSelectedEmpIds] = useState([]);
 
   // Calculate precise calendar dates for weekNum matching real calendar
-  const daysList = getWeekDaysForMonthAndWeek(year, month, weekNum);
+  const baseDaysList = getWeekDaysForMonthAndWeek(year, month, weekNum);
+  const daysList = baseDaysList.map(d => ({
+    ...d,
+    dayLabel: t[d.key] || d.label,
+    fullTitle: `${t[d.key] || d.label} (${d.dateStr})`
+  }));
 
   const shiftSlots = [
-    { key: '8h - 13h', label: '8h - 13h', bg: 'linear-gradient(135deg, #059669, #10b981)' },
-    { key: '13h - 17h', label: '13h - 17h', bg: 'linear-gradient(135deg, #d97706, #f59e0b)' },
-    { key: '17h - 22h', label: '17h - 22h', bg: 'linear-gradient(135deg, #6d28d9, #8b5cf6)' }
+    { key: '8h - 13h', label: t.shiftMorning, bg: 'linear-gradient(135deg, #059669, #10b981)' },
+    { key: '13h - 17h', label: t.shiftAfternoon, bg: 'linear-gradient(135deg, #d97706, #f59e0b)' },
+    { key: '17h - 22h', label: t.shiftEvening, bg: 'linear-gradient(135deg, #6d28d9, #8b5cf6)' }
   ];
 
   // Check if rosterData is explicitly set or cleared by manager
@@ -109,7 +118,7 @@ export default function WeeklyRosterView({
 
   // Action 1: Clear Entire Week Roster
   const handleClearEntireWeek = () => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa TOÀN BỘ lịch ca của Tuần ${weekNum} (Chi nhánh ${branchObj?.name || branchId}) không?`)) {
+    if (window.confirm(`${t.clearWeekBtn}?`)) {
       const emptyRoster = {
         _isCustom: true,
         '8h - 13h': {},
@@ -123,7 +132,7 @@ export default function WeeklyRosterView({
   // Action 2: Clear Specific Day Roster
   const handleClearDay = (e, dayKey, dayTitle) => {
     e.stopPropagation();
-    if (window.confirm(`Bạn có muốn xóa toàn bộ ca làm trong ngày ${dayTitle}?`)) {
+    if (window.confirm(`${t.clearDayBtn}: ${dayTitle}?`)) {
       const newRosterData = { ...effectiveRosterData, _isCustom: true };
       shiftSlots.forEach(s => {
         if (!newRosterData[s.key]) newRosterData[s.key] = {};
@@ -140,13 +149,13 @@ export default function WeeklyRosterView({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <Calendar size={22} className="text-cyan" />
           <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-            Bảng Sắp Ca Chi Nhánh {branchObj?.name || branchId} (Tuần {weekNum} – Tháng {month}/{year})
+            {t.branchRosterTitle} {branchObj?.name || branchId} ({t.week} {weekNum} – {t.month} {month}/{year})
           </h3>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', background: 'var(--bg-input)', padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontWeight: 600 }}>
-            👉 Vuốt sang phải để xem đủ Thứ 2 ➔ Chủ Nhật
+            {t.swipeHint}
           </span>
 
           {!readOnly && (
@@ -161,10 +170,10 @@ export default function WeeklyRosterView({
                 borderColor: 'rgba(244, 63, 94, 0.4)',
                 fontWeight: 700
               }}
-              title="Xóa trắng toàn bộ phân ca của Tuần này"
+              title={t.clearWeekBtn}
             >
               <Trash2 size={15} />
-              <span>Xóa Lịch Ca Tuần Này</span>
+              <span>{t.clearWeekBtn}</span>
             </button>
           )}
         </div>
@@ -192,12 +201,12 @@ export default function WeeklyRosterView({
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
-                    <span style={{ fontSize: '0.98rem', fontWeight: 700 }}>{d.label}</span>
+                    <span style={{ fontSize: '0.98rem', fontWeight: 700 }}>{d.dayLabel}</span>
                     {!readOnly && (
                       <button
                         type="button"
                         onClick={(e) => handleClearDay(e, d.key, d.fullTitle)}
-                        title={`Xóa tất cả ca làm của ${d.fullTitle}`}
+                        title={`${t.clearDayBtn}: ${d.fullTitle}`}
                         style={{
                           background: 'transparent',
                           color: 'var(--text-dim)',
@@ -260,7 +269,7 @@ export default function WeeklyRosterView({
                     <td
                       key={d.key}
                       onClick={() => handleOpenEdit(slot.key, d.key, d.fullTitle)}
-                      title={readOnly ? undefined : `Sắp ca ${slot.label} - ${d.fullTitle}`}
+                      title={readOnly ? undefined : `${slot.label} - ${d.fullTitle}`}
                       style={{
                         background: 'var(--bg-input)',
                         border: '1px solid var(--border-color)',
@@ -294,7 +303,7 @@ export default function WeeklyRosterView({
                             >
                               <span>{emp.name}</span>
                               <span style={{ fontSize: '0.7rem', fontWeight: 700, color: emp.type === 'parttime' ? 'var(--accent-purple)' : 'var(--accent-emerald)' }}>
-                                {emp.type === 'parttime' ? 'PT' : 'FT'}
+                                {emp.type === 'parttime' ? t.partTime : t.fullTime}
                               </span>
                             </div>
                           ))
@@ -320,7 +329,7 @@ export default function WeeklyRosterView({
             <div className="modal-header">
               <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Clock size={20} className="text-cyan" />
-                <span>Sắp Ca {editingSlot.slotKey} ({editingSlot.dayName})</span>
+                <span>{editingSlot.slotKey} ({editingSlot.dayName})</span>
               </h3>
               <button className="modal-close" onClick={() => setEditingSlot(null)}>
                 <X size={20} />
@@ -330,7 +339,7 @@ export default function WeeklyRosterView({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
-                  Chọn nhân viên làm ca <strong>{editingSlot.slotKey}</strong>:
+                  <strong>{branchObj?.name}</strong> - {editingSlot.slotKey}:
                 </p>
 
                 {selectedEmpIds.length > 0 && (
@@ -350,10 +359,10 @@ export default function WeeklyRosterView({
                       alignItems: 'center',
                       gap: '0.25rem'
                     }}
-                    title="Xóa bỏ chọn tất cả nhân viên trong ô ca này"
+                    title={t.clearCellBtn}
                   >
                     <RotateCcw size={12} />
-                    <span>Xóa trắng ô này</span>
+                    <span>{t.clearCellBtn}</span>
                   </button>
                 )}
               </div>
@@ -387,7 +396,7 @@ export default function WeeklyRosterView({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span>#{emp.stt} {emp.name}</span>
                           <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-                            [{emp.type === 'parttime' ? 'Part-Time' : 'Full-Time'}]
+                            [{emp.type === 'parttime' ? t.partTime : t.fullTime}]
                           </span>
                         </div>
 
@@ -400,11 +409,11 @@ export default function WeeklyRosterView({
 
               <div className="modal-footer" style={{ marginTop: '0.5rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setEditingSlot(null)}>
-                  Hủy
+                  {t.cancelBtn}
                 </button>
                 <button type="button" className="btn btn-primary" onClick={handleSaveSlot}>
                   <Check size={16} />
-                  <span>Lưu Phân Ca</span>
+                  <span>{t.saveRosterBtn}</span>
                 </button>
               </div>
             </div>

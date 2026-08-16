@@ -1,5 +1,6 @@
 import React from 'react';
-import { Calendar, Download, Sun, Moon, Building2, User, LogOut, KeyRound, CalendarDays, Users, Clock } from 'lucide-react';
+import { Calendar, Download, Sun, Moon, Building2, User, LogOut, KeyRound, CalendarDays, Users, Clock, Globe } from 'lucide-react';
+import { translations } from '../utils/language';
 
 export default function Navbar({
   year,
@@ -11,10 +12,13 @@ export default function Navbar({
   setActivePage,
   theme,
   setTheme,
+  lang = 'vi',
+  setLang,
   onExport,
   onLogout
 }) {
   const isAdmin = currentUser?.role === 'admin';
+  const t = translations[lang] || translations.vi;
 
   return (
     <header className="navbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', paddingBottom: 0 }}>
@@ -25,11 +29,11 @@ export default function Navbar({
             <Building2 size={24} />
           </div>
           <div className="brand-title">
-            <span>Hệ Thống Chấm Công 5 Chi Nhánh</span>
+            <span>{t.appTitle}</span>
             <small>
-              {currentUser ? currentUser.fullName : 'Hệ thống Quản lý Chấm công'}
+              {currentUser ? currentUser.fullName : t.appTitle}
               <span className="mode-badge" style={{ background: isAdmin ? 'rgba(139, 92, 246, 0.2)' : 'rgba(6, 182, 212, 0.2)', color: isAdmin ? 'var(--accent-purple)' : 'var(--accent-cyan)' }}>
-                {isAdmin ? '👑 Admin Mode' : `🏬 Chi nhánh ${currentUser?.branchId}`}
+                {isAdmin ? t.adminMode : `${t.branch} ${currentUser?.branchId}`}
               </span>
             </small>
           </div>
@@ -41,12 +45,12 @@ export default function Navbar({
             <Calendar size={16} className="text-muted" />
             <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>Tháng {m}</option>
+                <option key={m} value={m}>{t.month} {m}</option>
               ))}
             </select>
             <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
               {[2024, 2025, 2026, 2027, 2028].map((y) => (
-                <option key={y} value={y}>Năm {y}</option>
+                <option key={y} value={y}>{t.year} {y}</option>
               ))}
             </select>
           </div>
@@ -55,10 +59,10 @@ export default function Navbar({
           <button
             className="btn btn-excel"
             onClick={onExport}
-            title="Tải bảng Excel về máy"
+            title="Tải bảng Excel về máy / 匯出 Excel"
           >
             <Download size={16} />
-            <span>Xuất Excel</span>
+            <span>{t.exportExcel}</span>
           </button>
 
           {/* User Account Info & Logout */}
@@ -70,13 +74,31 @@ export default function Navbar({
             <button
               className="btn btn-secondary"
               onClick={onLogout}
-              title="Đăng xuất tài khoản"
+              title="Đăng xuất tài khoản / 登出"
               style={{ padding: '0.3rem 0.5rem', fontSize: '0.78rem', color: 'var(--accent-rose)', border: 'none' }}
             >
               <LogOut size={14} />
-              <span>Thoát</span>
+              <span>{t.logout}</span>
             </button>
           </div>
+
+          {/* Language Switcher Toggle Button (🇻🇳 Tiếng Việt ↔ 🇹🇼 繁體中文) */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setLang(lang === 'vi' ? 'zh' : 'vi')}
+            title="Chuyển đổi Ngôn ngữ / 切換語言 (Việt / 繁體中文)"
+            style={{
+              padding: '0.45rem 0.75rem',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              color: 'var(--accent-cyan)',
+              borderColor: 'var(--accent-cyan)',
+              background: 'rgba(6, 182, 212, 0.1)'
+            }}
+          >
+            <Globe size={16} />
+            <span>{lang === 'vi' ? '🇹🇼 繁體中文' : '🇻🇳 Tiếng Việt'}</span>
+          </button>
 
           {/* Theme Toggle */}
           <button
@@ -98,7 +120,7 @@ export default function Navbar({
           style={{ fontSize: '0.9rem', padding: '0.65rem 1.1rem' }}
         >
           <CalendarDays size={18} />
-          <span>Bảng Chấm Công</span>
+          <span>{t.attendanceTab}</span>
         </button>
 
         <button
@@ -107,7 +129,7 @@ export default function Navbar({
           style={{ fontSize: '0.9rem', padding: '0.65rem 1.1rem' }}
         >
           <Clock size={18} />
-          <span>✍️ Nhập Ca Làm Việc</span>
+          <span>{t.shiftEntryTab}</span>
         </button>
 
         <button
@@ -116,7 +138,7 @@ export default function Navbar({
           style={{ fontSize: '0.9rem', padding: '0.65rem 1.1rem' }}
         >
           <Calendar size={18} />
-          <span>📅 Bảng Sắp Ca Tuần</span>
+          <span>{t.weeklyRosterTab}</span>
         </button>
 
         <button
@@ -125,7 +147,7 @@ export default function Navbar({
           style={{ fontSize: '0.9rem', padding: '0.65rem 1.1rem' }}
         >
           <Users size={18} />
-          <span>Quản Lý Nhân Viên</span>
+          <span>{t.employeesTab}</span>
         </button>
 
         {isAdmin && (
@@ -135,7 +157,7 @@ export default function Navbar({
             style={{ fontSize: '0.9rem', padding: '0.65rem 1.1rem' }}
           >
             <KeyRound size={18} />
-            <span>Tài Khoản Quản Lý</span>
+            <span>{t.usersTab}</span>
           </button>
         )}
       </div>
