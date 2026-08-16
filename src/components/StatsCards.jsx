@@ -1,11 +1,14 @@
 import React from 'react';
 import { Users, Building } from 'lucide-react';
+import { translations } from '../utils/language';
 
 export default function StatsCards({
   employees,
   activeBranchId,
-  branches
+  branches,
+  lang = 'vi'
 }) {
+  const t = translations[lang] || translations.vi;
   const activeBranch = branches.find(b => b.id === activeBranchId);
 
   return (
@@ -16,7 +19,7 @@ export default function StatsCards({
         </div>
         <div className="stat-info">
           <span className="stat-value">{employees.length}</span>
-          <span className="stat-label">Tổng Số Nhân Viên</span>
+          <span className="stat-label">{t.totalEmployees}</span>
         </div>
       </div>
 
@@ -26,9 +29,9 @@ export default function StatsCards({
         </div>
         <div className="stat-info">
           <span className="stat-value">
-            {activeBranchId === 'ALL' ? 'Tất cả 5 Chi Nhánh' : activeBranch?.name || activeBranchId}
+            {activeBranchId === 'ALL' ? (lang === 'zh' ? '所有 5 家門市' : 'Tất cả 5 Chi Nhánh') : activeBranch?.name || activeBranchId}
           </span>
-          <span className="stat-label">Chi Nhánh Đang Chọn</span>
+          <span className="stat-label">{lang === 'zh' ? '當前選擇門市' : 'Chi Nhánh Đang Chọn'}</span>
         </div>
       </div>
     </div>

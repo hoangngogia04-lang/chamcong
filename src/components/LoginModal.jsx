@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
-import { X, LogIn, Lock, User, Building, ShieldCheck } from 'lucide-react';
+import { X, LogIn, Lock, User, Building, ShieldCheck, Globe } from 'lucide-react';
+import { translations } from '../utils/language';
 
 export default function LoginModal({
   isOpen,
   onClose,
   users,
   branches,
-  onLoginSuccess
+  onLoginSuccess,
+  lang = 'vi',
+  setLang
 }) {
+  const t = translations[lang] || translations.vi;
   const [selectedUsername, setSelectedUsername] = useState(users[0]?.username || 'admin');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -20,12 +24,12 @@ export default function LoginModal({
 
     const targetUser = users.find(u => u.username === selectedUsername);
     if (!targetUser) {
-      setErrorMsg('Tài khoản không tồn tại!');
+      setErrorMsg(lang === 'zh' ? '帳號不存在！' : 'Tài khoản không tồn tại!');
       return;
     }
 
     if (targetUser.password && targetUser.password !== password) {
-      setErrorMsg('Mật khẩu không chính xác! (Mật khẩu mặc định: 123)');
+      setErrorMsg(lang === 'zh' ? '密碼錯誤！(預設密碼: 123)' : 'Mật khẩu không chính xác! (Mật khẩu mặc định: 123)');
       return;
     }
 
@@ -42,11 +46,26 @@ export default function LoginModal({
         <div className="modal-header">
           <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <LogIn size={20} className="text-cyan" />
-            <span>Đăng Nhập Tài Khoản</span>
+            <span>{t.loginTitle}</span>
           </div>
-          <button className="btn btn-secondary" onClick={onClose} style={{ padding: '0.4rem' }}>
-            <X size={18} />
-          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {setLang && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setLang(lang === 'vi' ? 'zh' : 'vi')}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.78rem', color: 'var(--accent-cyan)' }}
+                title="切換語言 / Đổi ngôn ngữ"
+              >
+                <Globe size={14} />
+                <span>{lang === 'vi' ? '🇹🇼 TW' : '🇻🇳 VN'}</span>
+              </button>
+            )}
+            <button className="btn btn-secondary" onClick={onClose} style={{ padding: '0.4rem' }}>
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleLogin}>
@@ -58,7 +77,10 @@ export default function LoginModal({
             )}
 
             <div className="form-group">
-              <label>👤 Chọn Tài Khoản Quản Lý / Admin:</label>
+              <label className="form-label">
+                <User size={15} />
+                <span>{t.username}:</span>
+              </label>
               <select
                 className="form-control"
                 value={selectedUsername}
@@ -66,41 +88,44 @@ export default function LoginModal({
               >
                 {users.map(u => (
                   <option key={u.id} value={u.username}>
-                    {u.role === 'admin' ? '👑 Admin - Quản Trị Viên' : `🏬 ${u.fullName}`}
+                    {u.fullName} ({u.role === 'admin' ? t.adminMode : `${t.branch} ${u.branchId}`}) - [{u.username}]
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Selected Info Badge */}
-            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.82rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                {selectedUserObj?.role === 'admin' ? <ShieldCheck size={16} /> : <Building size={16} />}
-                <span>Quyền hạn: {selectedUserObj?.role === 'admin' ? 'Quản trị viên toàn hệ thống (Xem & sửa 5 chi nhánh)' : `Quản lý ${branchObj?.name || selectedUserObj?.branchId}`}</span>
-              </div>
-              <div style={{ color: 'var(--text-muted)' }}>
-                Mã tài khoản: <code>{selectedUserObj?.username}</code>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>🔒 Mật khẩu:</label>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label">
+                <Lock size={15} />
+                <span>{t.password}:</span>
+              </label>
               <input
                 type="password"
                 className="form-control"
-                placeholder="Nhập mật khẩu (Mặc định: 123)"
+                placeholder={lang === 'zh' ? '請輸入密碼 (預設: 123)...' : 'Nhập mật khẩu (Mặc định: 123)...'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
               />
             </div>
+
+            {selectedUserObj && (
+              <div style={{ padding: '0.65rem 0.85rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontSize: '0.82rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                  <ShieldCheck size={16} />
+                  <span>{selectedUserObj.role === 'admin' ? t.adminMode : `${t.branch}: ${branchObj?.name || selectedUserObj.branchId}`}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Hủy</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              {t.cancel}
+            </button>
             <button type="submit" className="btn btn-primary">
               <LogIn size={16} />
-              <span>Đăng Nhập</span>
+              <span>{t.loginBtn}</span>
             </button>
           </div>
         </form>

@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import BranchTabs from '../components/BranchTabs';
 import StatsCards from '../components/StatsCards';
 import AttendanceGrid from '../components/AttendanceGrid';
+import { translations } from '../utils/language';
 
 export default function AttendancePage({
   year,
@@ -17,8 +18,11 @@ export default function AttendancePage({
   currentUser,
   searchQuery,
   setSearchQuery,
-  handleCellClick
+  handleCellClick,
+  lang = 'vi'
 }) {
+  const t = translations[lang] || translations.vi;
+
   return (
     <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* 5 Branches Tab Bar */}
@@ -28,6 +32,7 @@ export default function AttendancePage({
         setActiveBranchId={setActiveBranchId}
         employeeCounts={employeeCounts}
         currentUser={currentUser}
+        lang={lang}
       />
 
       {/* 2 Stats Cards (Tổng số nhân viên & Chi nhánh đang chọn) */}
@@ -35,6 +40,7 @@ export default function AttendancePage({
         employees={visibleEmployees}
         activeBranchId={activeBranchId}
         branches={branches}
+        lang={lang}
       />
 
       {/* Search Toolbar */}
@@ -43,27 +49,23 @@ export default function AttendancePage({
           <Search size={18} className="text-dim" />
           <input
             type="text"
-            placeholder="Tìm kiếm tên nhân viên..."
+            placeholder={t.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-
-        <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-          Hiển thị: <strong>{visibleEmployees.length}</strong> nhân viên
-        </div>
       </div>
 
-      {/* Matrix Schedule Grid */}
+      {/* Attendance Matrix Grid */}
       <AttendanceGrid
         year={year}
         month={month}
-        employees={visibleEmployees}
+        visibleEmployees={visibleEmployees}
         attendance={attendance}
-        branches={branches}
-        isAdmin={true}
+        currentUser={currentUser}
         searchQuery={searchQuery}
-        onCellClick={handleCellClick}
+        handleCellClick={handleCellClick}
+        lang={lang}
       />
     </div>
   );

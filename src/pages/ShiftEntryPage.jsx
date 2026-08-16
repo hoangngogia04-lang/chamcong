@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Calendar, User, Check, CheckCircle2, Sparkles, Info, Lock, AlertCircle, RefreshCw, Calculator } from 'lucide-react';
+import { translations } from '../utils/language';
 
 /**
  * Calculates combined shift for Full-Time split shifts.
@@ -51,8 +52,10 @@ export default function ShiftEntryPage({
   branches,
   attendance,
   currentUser,
-  onSaveShift
+  onSaveShift,
+  lang = 'vi'
 }) {
+  const t = translations[lang] || translations.vi;
   const isAdmin = currentUser?.role === 'admin';
 
   // Filter employees by branch permission

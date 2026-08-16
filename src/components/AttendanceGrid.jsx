@@ -1,23 +1,25 @@
 import React from 'react';
 import { getDaysInMonth } from '../utils/excelHelper';
 import { Lock } from 'lucide-react';
+import { translations } from '../utils/language';
 
 export default function AttendanceGrid({
   year,
   month,
-  employees,
-  attendance,
-  branches,
-  isAdmin,
+  visibleEmployees = [],
+  attendance = {},
+  currentUser,
   searchQuery,
-  onCellClick
+  handleCellClick,
+  lang = 'vi'
 }) {
+  const t = translations[lang] || translations.vi;
   const daysInMonth = getDaysInMonth(year, month);
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const formattedMonthStr = String(month).padStart(2, '0');
 
-  // Real-time date constraint (Option B: Lock future days)
+  // Real-time date constraint
   const todayDate = new Date();
   const currentRealYear = todayDate.getFullYear();
   const currentRealMonth = todayDate.getMonth() + 1;
@@ -31,25 +33,27 @@ export default function AttendanceGrid({
   }
 
   // Filter employees by search query
-  const filteredEmployees = employees.filter(emp => {
+  const filteredEmployees = visibleEmployees.filter(emp => {
     if (!searchQuery) return true;
-    return emp.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return emp.name.toLowerCase().includes(searchQuery.toLowerCase()) || String(emp.stt) === searchQuery;
   });
 
   const getDayOfWeekStr = (day) => {
     const d = new Date(year, month - 1, day);
     const dayOfWeek = d.getDay();
-    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const dayNames = lang === 'zh'
+      ? ['日', '一', '二', '三', '四', '五', '六']
+      : ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     return { name: dayNames[dayOfWeek], isWeekend: dayOfWeek === 0 || dayOfWeek === 6 };
   };
 
   const handleCellClickGuard = (emp, dateKey, start, end, start2, end2, day) => {
-    if (!isAdmin) return;
+    if (currentUser?.role === 'employee') return;
     if (day > maxAllowedDay) {
-      alert(`⚠️ Không thể chấm công trước cho ngày tương lai (Ngày ${day}/${month})!`);
+      alert(`⚠️ ${lang === 'zh' ? '無法預先打卡未來日期' : 'Không thể chấm công trước cho ngày tương lai'} (${day}/${month})!`);
       return;
     }
-    onCellClick(emp, dateKey, start, end, start2, end2);
+    handleCellClick(emp, dateKey, start, end, start2, end2);
   };
 
   return (
@@ -61,19 +65,19 @@ export default function AttendanceGrid({
             <tr>
               <th colSpan={3 + daysInMonth} style={{ textAlign: 'left', padding: '0.75rem 1rem', background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)' }}>
                 <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                  📊 GIẤY LÊN CA - THÁNG {month}/{year} (上班月表)
+                  📊 {t.attendanceTab} - {t.month} {month}/{year}
                 </span>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '1rem' }}>
-                  🔒 Chế độ B: Các ngày từ Ngày {maxAllowedDay + 1} trở đi đã được khóa an toàn
+                  🔒 {lang === 'zh' ? `從 ${maxAllowedDay + 1} 號起已鎖定` : `Các ngày từ Ngày ${maxAllowedDay + 1} trở đi đã được khóa an toàn`}
                 </span>
               </th>
             </tr>
 
             {/* Column Titles */}
             <tr>
-              <th className="col-stt">STT</th>
-              <th className="col-name">TÊN NHÂN VIÊN</th>
-              <th className="col-ca">CA</th>
+              <th className="col-stt">{t.stt}</th>
+              <th className="col-name">{t.employeeName}</th>
+              <th className="col-ca">{t.shiftType}</th>
 
               {daysArray.map((day) => {
                 const { name: dayName, isWeekend } = getDayOfWeekStr(day);
@@ -83,7 +87,7 @@ export default function AttendanceGrid({
                     key={day}
                     className={`day-col ${isWeekend ? 'weekend-col' : ''}`}
                     style={{ opacity: isLocked ? 0.45 : 1, position: 'relative' }}
-                    title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : `Ngày ${day}`}
+                    title={isLocked ? `${t.month} ${day}` : `${t.month} ${day}`}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
                       <span>{day}</span>
@@ -100,13 +104,12 @@ export default function AttendanceGrid({
             {filteredEmployees.length === 0 ? (
               <tr>
                 <td colSpan={3 + daysInMonth} style={{ padding: '3rem', color: 'var(--text-dim)' }}>
-                  Không tìm thấy nhân viên phù hợp!
+                  {lang === 'zh' ? '查無符合條件的員工' : 'Không tìm thấy nhân viên phù hợp!'}
                 </td>
               </tr>
             ) : (
               filteredEmployees.map((emp, index) => {
                 const empAtt = attendance[emp.id] || {};
-                const branchObj = branches.find(b => b.id === emp.branchId);
                 const isPartTime = (emp.type || 'fulltime') === 'parttime';
 
                 return (
@@ -118,51 +121,39 @@ export default function AttendanceGrid({
                       </td>
                       <td className="col-name" rowSpan={2}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontWeight: 700 }}>{emp.name}</span>
-                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                            <span className="branch-tag">
-                              {branchObj?.code || emp.branchId}
-                            </span>
-                            <span className={`branch-tag ${isPartTime ? 'text-amber' : 'text-cyan'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
-                              {isPartTime ? 'Part-Time' : 'Full-Time'}
-                            </span>
-                          </div>
+                          <span>{emp.name}</span>
+                          <span style={{ fontSize: '0.68rem', color: isPartTime ? 'var(--accent-purple)' : 'var(--accent-emerald)' }}>
+                            {isPartTime ? t.partTime : t.fullTime}
+                          </span>
                         </div>
                       </td>
-                      <td className="col-ca" style={{ color: 'var(--accent-emerald)' }}>
-                        Lên Ca
-                      </td>
+
+                      <td className="col-ca" style={{ color: 'var(--accent-emerald)' }}>{t.shiftStart}</td>
 
                       {daysArray.map((day) => {
-                        const isLocked = day > maxAllowedDay;
                         const dayStr = String(day).padStart(2, '0');
                         const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
-                        const record = empAtt[dateKey] || {};
-                        const val = record.start || '';
-                        const val2 = record.start2 || '';
-                        const isOff = val === 'OFF';
+                        const rec = empAtt[dateKey] || {};
+                        const isLocked = day > maxAllowedDay;
+
+                        const startVal = rec.start || '';
+                        const endVal = rec.end || '';
+                        const start2Val = rec.start2 || '';
+                        const end2Val = rec.end2 || '';
+
+                        const isOff = startVal === 'OFF';
 
                         return (
                           <td
                             key={day}
-                            className={`cell-time ${isAdmin && !isLocked ? 'editable' : ''}`}
-                            onClick={() => handleCellClickGuard(emp, dateKey, record.start, record.end, record.start2, record.end2, day)}
-                            title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : (val2 ? `Ca 1: ${val} - ${record.end} | Ca 2: ${val2} - ${record.end2}` : 'Click để sửa ca làm')}
-                            style={{
-                              opacity: isLocked ? 0.35 : 1,
-                              background: isLocked ? 'rgba(0, 0, 0, 0.04)' : undefined,
-                              cursor: isLocked ? 'not-allowed' : 'pointer'
-                            }}
+                            className={`cell-time ${!isLocked && currentUser?.role !== 'employee' ? 'editable' : ''}`}
+                            onClick={() => handleCellClickGuard(emp, dateKey, startVal, endVal, start2Val, end2Val, day)}
+                            style={{ opacity: isLocked ? 0.35 : 1 }}
                           >
-                            {isLocked ? (
-                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>🔒</span>
-                            ) : isOff ? (
+                            {isOff ? (
                               <span className="text-off">OFF</span>
-                            ) : val ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.1' }}>
-                                <span className="text-start-time">{val}</span>
-                                {isPartTime && val2 && <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>({val2})</span>}
-                              </div>
+                            ) : startVal ? (
+                              <span className="text-start-time">{startVal}</span>
                             ) : (
                               <span className="text-empty">-</span>
                             )}
@@ -173,40 +164,32 @@ export default function AttendanceGrid({
 
                     {/* Row 2: End Time (Giờ Xuống Ca) */}
                     <tr className="row-end">
-                      <td className="col-ca" style={{ color: 'var(--accent-cyan)' }}>
-                        Xuống Ca
-                      </td>
+                      <td className="col-ca" style={{ color: 'var(--accent-cyan)' }}>{t.shiftEnd}</td>
 
                       {daysArray.map((day) => {
-                        const isLocked = day > maxAllowedDay;
                         const dayStr = String(day).padStart(2, '0');
                         const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
-                        const record = empAtt[dateKey] || {};
-                        const val = record.end || '';
-                        const val2 = record.end2 || '';
-                        const isOff = record.start === 'OFF';
+                        const rec = empAtt[dateKey] || {};
+                        const isLocked = day > maxAllowedDay;
+
+                        const startVal = rec.start || '';
+                        const endVal = rec.end || '';
+                        const start2Val = rec.start2 || '';
+                        const end2Val = rec.end2 || '';
+
+                        const isOff = startVal === 'OFF';
 
                         return (
                           <td
                             key={day}
-                            className={`cell-time ${isAdmin && !isLocked ? 'editable' : ''}`}
-                            onClick={() => handleCellClickGuard(emp, dateKey, record.start, record.end, record.start2, record.end2, day)}
-                            title={isLocked ? `Ngày ${day} chưa tới (Đã khóa)` : (val2 ? (isPartTime ? `Ca 1: ${record.start} - ${val} | Ca 2: ${record.start2} - ${val2}` : `Ca gộp Full-time: ${val} (Tài liệu gốc: ${record.start}-${record.end} & ${record.start2}-${val2})`) : 'Click để sửa ca làm')}
-                            style={{
-                              opacity: isLocked ? 0.35 : 1,
-                              background: isLocked ? 'rgba(0, 0, 0, 0.04)' : undefined,
-                              cursor: isLocked ? 'not-allowed' : 'pointer'
-                            }}
+                            className={`cell-time ${!isLocked && currentUser?.role !== 'employee' ? 'editable' : ''}`}
+                            onClick={() => handleCellClickGuard(emp, dateKey, startVal, endVal, start2Val, end2Val, day)}
+                            style={{ opacity: isLocked ? 0.35 : 1 }}
                           >
-                            {isLocked ? (
-                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>🔒</span>
-                            ) : isOff ? (
+                            {isOff ? (
                               <span className="text-off" style={{ opacity: 0.3 }}>-</span>
-                            ) : val ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: '1.1' }}>
-                                <span className="text-end-time">{val}</span>
-                                {isPartTime && val2 && <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>({val2})</span>}
-                              </div>
+                            ) : endVal ? (
+                              <span className="text-end-time">{endVal}</span>
                             ) : (
                               <span className="text-empty">-</span>
                             )}
@@ -220,36 +203,6 @@ export default function AttendanceGrid({
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Legend & Footer */}
-      <div className="table-footer">
-        <div className="legend-list">
-          <div className="legend-item">
-            <span className="legend-dot" style={{ background: 'var(--accent-emerald)' }}></span>
-            <span>Giờ lên ca 1</span>
-          </div>
-          <div className="legend-item">
-            <span className="legend-dot" style={{ background: 'var(--accent-cyan)' }}></span>
-            <span>Giờ xuống ca 1</span>
-          </div>
-          <div className="legend-item">
-            <span className="legend-dot" style={{ background: 'var(--accent-purple)' }}></span>
-            <span>Ca 2 / Part-Time (Gãy)</span>
-          </div>
-          <div className="legend-item">
-            <span className="legend-dot" style={{ background: 'var(--accent-rose)' }}></span>
-            <span>Nghỉ (OFF)</span>
-          </div>
-          <div className="legend-item">
-            <Lock size={12} className="text-muted" />
-            <span>Ngày chưa tới (Khóa)</span>
-          </div>
-        </div>
-
-        <div>
-          Tổng hiển thị: <strong>{filteredEmployees.length}</strong> / {employees.length} nhân viên
-        </div>
       </div>
     </div>
   );

@@ -349,6 +349,7 @@ export default function App() {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             handleCellClick={handleCellClick}
+            lang={lang}
           />
         )}
 
@@ -361,6 +362,7 @@ export default function App() {
             attendance={attendance}
             currentUser={currentUser}
             onSaveShift={handleSaveShift}
+            lang={lang}
           />
         )}
 
@@ -388,6 +390,7 @@ export default function App() {
             onAddEmployee={handleAddEmployee}
             onUpdateEmployee={handleUpdateEmployee}
             onDeleteEmployee={handleDeleteEmployee}
+            lang={lang}
           />
         )}
 
@@ -400,6 +403,7 @@ export default function App() {
             onAddUser={handleAddUser}
             onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}
+            lang={lang}
           />
         )}
       </main>
@@ -416,8 +420,20 @@ export default function App() {
           initialStart2={selectedCell.start2}
           initialEnd2={selectedCell.end2}
           onSave={handleSaveShift}
+          lang={lang}
         />
       )}
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        users={users}
+        branches={branches}
+        onLoginSuccess={handleLoginSuccess}
+        lang={lang}
+        setLang={setLang}
+      />
     </div>
   );
 }

@@ -1,13 +1,16 @@
 import React from 'react';
 import { Layers, Store, Lock } from 'lucide-react';
+import { translations } from '../utils/language';
 
 export default function BranchTabs({
   branches,
   activeBranchId,
   setActiveBranchId,
   employeeCounts,
-  currentUser
+  currentUser,
+  lang = 'vi'
 }) {
+  const t = translations[lang] || translations.vi;
   const isAdmin = currentUser?.role === 'admin';
   const userBranchId = currentUser?.branchId;
 
@@ -19,7 +22,7 @@ export default function BranchTabs({
           onClick={() => setActiveBranchId('ALL')}
         >
           <Layers size={16} />
-          <span>Tất Cả (5 Chi Nhánh)</span>
+          <span>{lang === 'zh' ? '所有門市 (5 家分店)' : 'Tất Cả (5 Chi Nhánh)'}</span>
           <span className="count-badge">
             {Object.values(employeeCounts).reduce((a, b) => a + b, 0)}
           </span>
