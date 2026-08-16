@@ -13,53 +13,63 @@ export function calculateEmployeeMonthlyStats(emp, attendanceMap = {}, daysArray
   let totalMinutesWorked = 0;
   let totalOvertimeMinutes = 0;
 
-  daysArray.forEach(day => {
-    const dayStr = String(day).padStart(2, '0');
-    const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
-    const rec = attendanceMap[dateKey];
+  try {
+    const empAttMap = (attendanceMap && emp?.id && attendanceMap[emp.id]) ? attendanceMap[emp.id] : (attendanceMap || {});
 
-    if (!rec || !rec.start) return;
+    daysArray.forEach(day => {
+      const dayStr = String(day).padStart(2, '0');
+      const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
+      const rec = empAttMap[dateKey];
 
-    if (rec.start === 'OFF') {
-      totalOffDays++;
-    } else {
-      let dayMinutes = 0;
+      if (!rec || !rec.start) return;
 
-      // Ca 1 duration
-      if (rec.start && rec.end && rec.start.includes(':') && rec.end.includes(':')) {
-        const [h1, m1] = rec.start.split(':').map(Number);
-        const [h2, m2] = rec.end.split(':').map(Number);
-        const dur1 = Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
-        dayMinutes += dur1;
-      }
+      if (rec.start === 'OFF') {
+        totalOffDays++;
+      } else {
+        let dayMinutes = 0;
 
-      // Ca 2 duration (Split shift / Ca Gãy)
-      if (rec.start2 && rec.end2 && rec.start2.includes(':') && rec.end2.includes(':')) {
-        const [h1, m1] = rec.start2.split(':').map(Number);
-        const [h2, m2] = rec.end2.split(':').map(Number);
-        const dur2 = Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
-        dayMinutes += dur2;
-      }
+        // Ca 1 duration
+        if (rec.start && rec.end && typeof rec.start === 'string' && typeof rec.end === 'string' && rec.start.includes(':') && rec.end.includes(':')) {
+          const [h1, m1] = rec.start.split(':').map(Number);
+          const [h2, m2] = rec.end.split(':').map(Number);
+          if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+            const dur1 = Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+            dayMinutes += dur1;
+          }
+        }
 
-      if (dayMinutes > 0) {
-        totalMinutesWorked += dayMinutes;
+        // Ca 2 duration (Split shift / Ca Gãy)
+        if (rec.start2 && rec.end2 && typeof rec.start2 === 'string' && typeof rec.end2 === 'string' && rec.start2.includes(':') && rec.end2.includes(':')) {
+          const [h1, m1] = rec.start2.split(':').map(Number);
+          const [h2, m2] = rec.end2.split(':').map(Number);
+          if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+            const dur2 = Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+            dayMinutes += dur2;
+          }
+        }
 
-        if (isPartTime) {
-          totalWorkingDays += 1;
-        } else {
-          // Full-Time Logic: Standard shift = 9h (540 mins)
-          if (dayMinutes >= 540) {
+        if (dayMinutes > 0) {
+          totalMinutesWorked += dayMinutes;
+
+          if (isPartTime) {
             totalWorkingDays += 1;
-            totalOvertimeMinutes += (dayMinutes - 540);
           } else {
-            // Worked less than 9h (e.g. 5h shift => 5/9 work day)
-            const partialDay = Math.round((dayMinutes / 540) * 100) / 100;
-            totalWorkingDays += partialDay;
+            // Full-Time Logic: Standard shift = 9h (540 mins)
+            if (dayMinutes >= 540) {
+              totalWorkingDays += 1;
+              totalOvertimeMinutes += (dayMinutes - 540);
+            } else {
+              // Worked less than 9h (e.g. 5h shift => 5/9 work day)
+              const partialDay = Math.round((dayMinutes / 540) * 100) / 100;
+              totalWorkingDays += partialDay;
+            }
           }
         }
       }
-    }
-  });
+    });
+  } catch (err) {
+    console.error('Error calculating monthly stats:', err);
+  }
 
   const totalHoursWorked = (totalMinutesWorked / 60).toFixed(1);
   const totalOvertimeHours = (totalOvertimeMinutes / 60).toFixed(1);

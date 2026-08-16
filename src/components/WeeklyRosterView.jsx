@@ -56,15 +56,18 @@ export default function WeeklyRosterView({
       const dateKey = dObj.dateKey;
 
       branchEmployees.forEach(emp => {
-        const empAttMap = attendance[emp.id] || {};
+        const empAttMap = (attendance && emp?.id && attendance[emp.id]) || {};
         const rec = empAttMap[dateKey];
-        if (!rec || !rec.start || rec.start === 'OFF') return;
+        if (!rec || !rec.start || rec.start === 'OFF' || typeof rec.start !== 'string' || !rec.start.includes(':')) return;
+        if (!rec.end || typeof rec.end !== 'string' || !rec.end.includes(':')) return;
 
         const startH = parseInt(rec.start.split(':')[0], 10);
         const endH = parseInt(rec.end.split(':')[0], 10);
 
-        const start2H = rec.start2 ? parseInt(rec.start2.split(':')[0], 10) : null;
-        const end2H = rec.end2 ? parseInt(rec.end2.split(':')[0], 10) : null;
+        if (isNaN(startH) || isNaN(endH)) return;
+
+        const start2H = (rec.start2 && typeof rec.start2 === 'string' && rec.start2.includes(':')) ? parseInt(rec.start2.split(':')[0], 10) : null;
+        const end2H = (rec.end2 && typeof rec.end2 === 'string' && rec.end2.includes(':')) ? parseInt(rec.end2.split(':')[0], 10) : null;
 
         // 8h - 13h slot
         if ((startH < 13 && endH > 8) || (start2H !== null && start2H < 13 && end2H > 8)) {
