@@ -122,30 +122,54 @@ export default function ShiftEditModal({
             <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem', display: 'block' }}>
               {t.presetTitle}
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem' }}>
-              {presets.map((p, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handlePresetClick(p)}
-                  style={{
-                    padding: '0.45rem 0.6rem',
-                    fontSize: '0.8rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-input)',
-                    color: 'var(--text-main)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    fontWeight: 600
-                  }}
-                >
-                  <span>{p.icon}</span>
-                  <span>{p.label}</span>
-                </button>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.45rem' }}>
+              {presets.map((p, idx) => {
+                const isCurrent = (start === p.start && end === p.end && (p.start2 ? (start2 === p.start2 && end2 === p.end2) : (!start2 && !end2)));
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handlePresetClick(p)}
+                    style={{
+                      padding: '0.5rem 0.65rem',
+                      fontSize: '0.8rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: isCurrent ? '2px solid var(--accent-cyan)' : '1px solid var(--border-color)',
+                      background: isCurrent ? 'rgba(6, 182, 212, 0.22)' : (p.start2 ? 'rgba(139, 92, 246, 0.12)' : 'var(--bg-input)'),
+                      color: isCurrent ? 'var(--accent-cyan)' : (p.start2 ? 'var(--accent-purple)' : 'var(--text-main)'),
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'space-between',
+                      gap: '0.35rem',
+                      fontWeight: isCurrent ? 700 : 600,
+                      boxShadow: isCurrent ? '0 0 10px rgba(6, 182, 212, 0.4)' : 'none',
+                      transition: 'all 0.2s ease-in-out'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span>{p.icon}</span>
+                      <span>{p.label}</span>
+                    </div>
+                    {isCurrent && (
+                      <span style={{
+                        background: 'var(--accent-cyan)',
+                        color: '#FFFFFF',
+                        borderRadius: '50%',
+                        width: '16px',
+                        height: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justify: 'center',
+                        fontSize: '0.65rem',
+                        fontWeight: 900
+                      }}>
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -447,7 +447,7 @@ export default function ShiftEntryPage({
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.4rem' }}>
               {presets.map((p, idx) => {
-                const isCurrent = shiftStart === p.start && shiftEnd === p.end && (p.start2 ? shiftStart2 === p.start2 : true);
+                const isCurrent = shiftStart === p.start && shiftEnd === p.end && (p.start2 ? (shiftStart2 === p.start2 && shiftEnd2 === p.end2) : (!shiftStart2 && !shiftEnd2));
                 return (
                   <button
                     type="button"
@@ -456,19 +456,38 @@ export default function ShiftEntryPage({
                     style={{
                       padding: '0.65rem 1rem',
                       borderRadius: 'var(--radius-md)',
-                      border: isCurrent ? '2px solid var(--accent-emerald)' : '1px solid var(--border-color)',
-                      background: isCurrent ? 'rgba(16, 185, 129, 0.2)' : (p.start2 ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-input)'),
-                      color: isCurrent ? 'var(--accent-emerald)' : (p.start2 ? 'var(--accent-purple)' : 'var(--text-main)'),
+                      border: isCurrent ? '2px solid var(--accent-cyan)' : '1px solid var(--border-color)',
+                      background: isCurrent ? 'rgba(6, 182, 212, 0.22)' : (p.start2 ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-input)'),
+                      color: isCurrent ? 'var(--accent-cyan)' : (p.start2 ? 'var(--accent-purple)' : 'var(--text-main)'),
                       fontWeight: 700,
                       cursor: 'pointer',
                       fontSize: '0.88rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.4rem'
+                      gap: '0.4rem',
+                      boxShadow: isCurrent ? '0 0 12px rgba(6, 182, 212, 0.45)' : 'none',
+                      transition: 'all 0.2s ease-in-out'
                     }}
                   >
                     <span>{p.icon}</span>
                     <span>{p.label}</span>
+                    {isCurrent && (
+                      <span style={{
+                        background: 'var(--accent-cyan)',
+                        color: '#FFFFFF',
+                        borderRadius: '50%',
+                        width: '18px',
+                        height: '18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justify: 'center',
+                        fontSize: '0.7rem',
+                        fontWeight: 900,
+                        marginLeft: '0.2rem'
+                      }}>
+                        ✓
+                      </span>
+                    )}
                   </button>
                 );
               })}
