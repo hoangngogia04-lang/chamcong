@@ -240,7 +240,7 @@ export default function EmployeesPage({
                         </select>
                       ) : (
                         <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '0.2rem 0.55rem', borderRadius: 'var(--radius-sm)', background: isPT ? 'rgba(139, 92, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)', color: isPT ? 'var(--accent-purple)' : 'var(--accent-emerald)' }}>
-                          {isPT ? `⏱️ Part-Time (${t.partTime})` : `👔 Full-Time (${t.fullTime})`}
+                          {isPT ? `⏱️ ${t.partTime}` : `👔 ${t.fullTime}`}
                         </span>
                       )}
                     </td>

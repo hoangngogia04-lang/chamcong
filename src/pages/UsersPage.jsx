@@ -112,7 +112,7 @@ export default function UsersPage({
             <input
               type="text"
               className="form-control"
-              placeholder="VD: ql_bienhoa"
+              placeholder={t.userPlaceholder}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -124,7 +124,7 @@ export default function UsersPage({
             <input
               type="text"
               className="form-control"
-              placeholder="Mật khẩu..."
+              placeholder={t.passwordPlaceholder}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -136,7 +136,7 @@ export default function UsersPage({
             <input
               type="text"
               className="form-control"
-              placeholder="VD: Nguyễn Văn A"
+              placeholder={t.fullNamePlaceholder}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
@@ -144,15 +144,15 @@ export default function UsersPage({
           </div>
 
           <div className="form-group">
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>{t.role}</label>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>{t.roleLabel}</label>
             <select
               className="form-control"
               value={role}
               onChange={(e) => setRole(e.target.value)}
             >
-              <option value="manager">🏬 Quản Lý Chi Nhánh (Manager)</option>
-              <option value="employee">👤 Nhân Viên Xem Ca (Employee)</option>
-              <option value="admin">👑 Admin Toàn Hệ Thống</option>
+              <option value="manager">🏬 {t.branchManagerRole}</option>
+              <option value="employee">👤 {t.employeeRole}</option>
+              <option value="admin">👑 {t.adminRole}</option>
             </select>
           </div>
 

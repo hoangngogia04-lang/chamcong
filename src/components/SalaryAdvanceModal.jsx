@@ -85,11 +85,11 @@ export default function SalaryAdvanceModal({
 
     const numAmount = Number(amount);
     if (!selectedEmpId) {
-      setErrorMsg('Vui lòng chọn nhân viên!');
+      setErrorMsg(lang === 'zh' ? '請選擇預支員工！' : 'Vui lòng chọn nhân viên!');
       return;
     }
     if (!numAmount || numAmount <= 0) {
-      setErrorMsg('Vui lòng nhập số tiền hợp lệ (> 0)!');
+      setErrorMsg(lang === 'zh' ? '請輸入有效的金額 (> 0)！' : 'Vui lòng nhập số tiền hợp lệ (> 0)!');
       return;
     }
 
@@ -101,7 +101,7 @@ export default function SalaryAdvanceModal({
       branchId: empObj?.branchId || 'CN1',
       date: advanceDate,
       amount: numAmount,
-      note: note.trim() || 'Ứng lương giữa tháng',
+      note: note.trim() || (lang === 'zh' ? '月中預支' : 'Ứng lương giữa tháng'),
       year: Number(year),
       month: Number(month),
       createdAt: new Date().toISOString()
@@ -109,7 +109,7 @@ export default function SalaryAdvanceModal({
 
     onSaveAdvance(newAdvance);
 
-    setSuccessMsg(`✅ Đã tạo phiếu ứng lương ${numAmount.toLocaleString('vi-VN')}đ cho ${empObj?.name}!`);
+    setSuccessMsg(`✅ ${lang === 'zh' ? '已成功建立預支單' : 'Đã tạo phiếu ứng lương'} ${numAmount.toLocaleString('vi-VN')}đ (${empObj?.name})!`);
     setNote('');
     setTimeout(() => setSuccessMsg(''), 3000);
   };
@@ -135,10 +135,10 @@ export default function SalaryAdvanceModal({
             </div>
             <div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
-                💸 Quản Lý Ứng Lương Nhân Viên
+                {t.salaryAdvanceTitle}
               </h3>
               <small style={{ color: 'var(--text-muted)' }}>
-                Tháng {month}/{year} | Tổng đã ứng: <strong style={{ color: 'var(--accent-amber)' }}>{totalAdvanceAmount.toLocaleString('vi-VN')}đ</strong>
+                {t.month} {month}/{year} | {t.totalAdvanced} <strong style={{ color: 'var(--accent-amber)' }}>{totalAdvanceAmount.toLocaleString('vi-VN')}đ</strong>
               </small>
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function SalaryAdvanceModal({
             style={{ fontSize: '0.88rem', padding: '0.45rem 0.85rem' }}
           >
             <Plus size={16} />
-            <span>Tạo Phiếu Ứng Mới</span>
+            <span>{t.tabAddNewAdvance}</span>
           </button>
 
           <button
@@ -165,7 +165,7 @@ export default function SalaryAdvanceModal({
             style={{ fontSize: '0.88rem', padding: '0.45rem 0.85rem' }}
           >
             <FileText size={16} />
-            <span>Lịch Sử Ứng Lương ({currentMonthAdvances.length})</span>
+            <span>{t.tabAdvanceHistory} ({currentMonthAdvances.length})</span>
           </button>
         </div>
 
@@ -190,7 +190,7 @@ export default function SalaryAdvanceModal({
             {activeBranchId === 'ALL' && (
               <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                 <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.35rem', display: 'block' }}>
-                  🏢 Lọc Chi Nhánh:
+                  {t.filterBranch}
                 </label>
                 <select
                   className="input"
@@ -198,7 +198,7 @@ export default function SalaryAdvanceModal({
                   onChange={e => setFilterBranchId(e.target.value)}
                   style={{ width: '100%', padding: '0.55rem', fontSize: '0.9rem' }}
                 >
-                  <option value="ALL">-- Tất Cả Chi Nhánh --</option>
+                  <option value="ALL">-- {t.allBranches} --</option>
                   {branches.map(b => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
@@ -209,7 +209,7 @@ export default function SalaryAdvanceModal({
             {/* Select Employee */}
             <div className="form-group">
               <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.35rem', display: 'block' }}>
-                👤 Chọn Nhân Viên Ứng Tiền:
+                {t.selectEmpAdvance}
               </label>
               <select
                 className="input"
@@ -218,7 +218,7 @@ export default function SalaryAdvanceModal({
                 style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
               >
                 {filteredEmployees.length === 0 ? (
-                  <option value="">(Không có nhân viên thuộc chi nhánh này)</option>
+                  <option value="">{lang === 'zh' ? '(此門市無員工)' : '(Không có nhân viên thuộc chi nhánh này)'}</option>
                 ) : (
                   filteredEmployees.map(emp => {
                     const bObj = branches.find(b => b.id === emp.branchId);
@@ -236,7 +236,7 @@ export default function SalaryAdvanceModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
               <div className="form-group">
                 <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.35rem', display: 'block' }}>
-                  📅 Ngày Ứng:
+                  {t.advanceDate}
                 </label>
                 <input
                   type="date"
@@ -249,7 +249,7 @@ export default function SalaryAdvanceModal({
 
               <div className="form-group">
                 <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.35rem', display: 'block' }}>
-                  💵 Số Tiền Ứng (VNĐ):
+                  {t.advanceAmount}
                 </label>
                 <input
                   type="number"
@@ -265,7 +265,7 @@ export default function SalaryAdvanceModal({
 
             {/* Quick Amount Buttons */}
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', alignSelf: 'center' }}>Chọn nhanh:</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', alignSelf: 'center' }}>{t.quickSelect}</span>
               {[200000, 500000, 1000000, 2000000, 3000000].map(val => (
                 <button
                   key={val}
@@ -282,12 +282,12 @@ export default function SalaryAdvanceModal({
             {/* Note */}
             <div className="form-group">
               <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.35rem', display: 'block' }}>
-                📝 Ghi Chú / Lý Do:
+                {t.noteReason}
               </label>
               <input
                 type="text"
                 className="input"
-                placeholder="Ví dụ: Ứng giữa tháng, Ứng mua đồ..."
+                placeholder={t.notePlaceholder}
                 value={note}
                 onChange={e => setNote(e.target.value)}
                 style={{ width: '100%', padding: '0.55rem' }}
@@ -297,10 +297,10 @@ export default function SalaryAdvanceModal({
             {/* Action buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', marginTop: '0.5rem' }}>
               <button type="button" className="btn btn-secondary" onClick={onClose}>
-                Hủy
+                {t.cancel}
               </button>
               <button type="submit" className="btn btn-primary" style={{ background: 'var(--accent-amber)', color: '#000', fontWeight: 700 }}>
-                💾 Lưu Phiếu Ứng Lương
+                {t.saveAdvanceBtn}
               </button>
             </div>
           </form>
@@ -311,19 +311,19 @@ export default function SalaryAdvanceModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '1rem', maxHeight: '420px', overflowY: 'auto' }}>
             {currentMonthAdvances.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                Chưa có lượt ứng lương nào trong tháng {month}/{year}
+                {t.noAdvancesMonth} {month}/{year}
               </div>
             ) : (
               <table className="attendance-table" style={{ width: '100%', fontSize: '0.88rem' }}>
                 <thead>
                   <tr>
-                    <th>STT</th>
-                    <th>Nhân Viên</th>
-                    <th>Chi Nhánh</th>
-                    <th>Ngày Ứng</th>
-                    <th>Số Tiền</th>
-                    <th>Ghi Chú</th>
-                    <th>Thao Tác</th>
+                    <th>{t.stt}</th>
+                    <th>{t.employeeName}</th>
+                    <th>{t.branch}</th>
+                    <th>{t.advanceDate}</th>
+                    <th>{t.advanceAmount}</th>
+                    <th>{t.noteColumn}</th>
+                    <th>{t.actionColumn}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -345,7 +345,7 @@ export default function SalaryAdvanceModal({
                             onClick={() => onDeleteAdvance(adv.id)}
                             className="btn btn-secondary"
                             style={{ padding: '0.25rem 0.45rem', color: 'var(--accent-rose)' }}
-                            title="Xóa phiếu ứng này"
+                            title={lang === 'zh' ? '刪除此單' : 'Xóa phiếu ứng này'}
                           >
                             <Trash2 size={15} />
                           </button>

@@ -121,16 +121,16 @@ export default function ShiftEntryPage({
     setErrorMsg('');
   }, [selectedEmpId, selectedDay, year, month, attendance, isPartTime]);
 
-  // Fixed Presets with clean emoji icons
+  // Fixed Presets with clean emoji icons (Bilingual)
   const presets = [
-    { label: 'Ca Full (8h - 22h)', start: '08:00', end: '22:00', icon: '⚡' },
-    { label: 'Ca Sáng (8h - 17h)', start: '08:00', end: '17:00', icon: '☀️' },
-    { label: 'Ca Tối (13h - 22h)', start: '13:00', end: '22:00', icon: '🌙' },
-    { label: 'Sáng Ngắn (8h - 13h)', start: '08:00', end: '13:00', icon: '🌅' },
-    { label: 'Tối Ngắn (17h - 22h)', start: '17:00', end: '22:00', icon: '🌆' },
-    { label: 'Ca Gãy (8h-12h & 17h-22h)', start: '08:00', end: '12:00', start2: '17:00', end2: '22:00', icon: '🔄' },
-    { label: 'Ca Gãy (8h-13h & 17h-22h)', start: '08:00', end: '13:00', start2: '17:00', end2: '22:00', icon: '🔄' },
-    { label: 'Nghỉ (OFF)', start: 'OFF', end: '', icon: '☕' }
+    { label: lang === 'zh' ? '全天班 (8h - 22h)' : 'Ca Full (8h - 22h)', start: '08:00', end: '22:00', icon: '⚡' },
+    { label: lang === 'zh' ? '早班 (8h - 17h)' : 'Ca Sáng (8h - 17h)', start: '08:00', end: '17:00', icon: '☀️' },
+    { label: lang === 'zh' ? '晚班 (13h - 22h)' : 'Ca Tối (13h - 22h)', start: '13:00', end: '22:00', icon: '🌙' },
+    { label: lang === 'zh' ? '短早班 (8h - 13h)' : 'Sáng Ngắn (8h - 13h)', start: '08:00', end: '13:00', icon: '🌅' },
+    { label: lang === 'zh' ? '短晚班 (17h - 22h)' : 'Tối Ngắn (17h - 22h)', start: '17:00', end: '22:00', icon: '🌆' },
+    { label: lang === 'zh' ? '拆班 (8h–12h & 17h–22h)' : 'Ca Gãy (8h-12h & 17h-22h)', start: '08:00', end: '12:00', start2: '17:00', end2: '22:00', icon: '🔄' },
+    { label: lang === 'zh' ? '拆班 (8h–13h & 17h–22h)' : 'Ca Gãy (8h-13h & 17h-22h)', start: '08:00', end: '13:00', start2: '17:00', end2: '22:00', icon: '🔄' },
+    { label: lang === 'zh' ? '休假 (OFF)' : 'Nghỉ (OFF)', start: 'OFF', end: '', icon: '☕' }
   ];
 
   const handleApplyPreset = (p) => {
@@ -269,10 +269,10 @@ export default function ShiftEntryPage({
       <div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <Clock size={28} className="text-cyan" />
-          <span>Trang Nhập Ca Làm Việc Cho Nhân Viên</span>
+          <span>{t.shiftEntryTitle}</span>
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-          Hỗ trợ chọn ca gãy cho cả <strong>👔 Full-Time (Tự động tính gộp tổng giờ)</strong> và <strong>⏱️ Part-Time (Tách 2 ca độc lập)</strong>.
+          {t.shiftEntrySub}
         </p>
       </div>
 
@@ -330,11 +330,11 @@ export default function ShiftEntryPage({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
               <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <User size={18} />
-                <span>1. Chọn Nhân Viên:</span>
+                <span>{t.step1SelectEmp}</span>
               </label>
 
               <span className={`shift-tag ${isPartTime ? 'shift-afternoon' : 'shift-morning'}`}>
-                {isPartTime ? '⏱️ Nhân viên Part-Time (Ca Gãy)' : '👔 Nhân viên Full-Time (Chính thức)'}
+                {isPartTime ? `⏱️ ${t.partTimeBadge}` : `👔 ${t.fullTimeBadge}`}
               </span>
             </div>
 
@@ -349,7 +349,7 @@ export default function ShiftEntryPage({
                 const empIsPartTime = (emp.type || 'fulltime') === 'parttime';
                 return (
                   <option key={emp.id} value={emp.id}>
-                    {emp.stt}. {emp.name} ({br ? br.name : emp.branchId}) — [{empIsPartTime ? 'Part-Time' : 'Full-Time'}]
+                    {emp.stt}. {emp.name} ({br ? br.name : emp.branchId}) — [{empIsPartTime ? t.partTime : t.fullTime}]
                   </option>
                 );
               })}
@@ -361,7 +361,7 @@ export default function ShiftEntryPage({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
               <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Calendar size={18} />
-                <span>2. Chọn Ngày Chấm Công (Tháng {month}/{year}):</span>
+                <span>2. {t.selectDate} ({t.month} {month}/{year}):</span>
               </label>
 
               {/* Live Info Banner for Selected Day */}
@@ -443,7 +443,7 @@ export default function ShiftEntryPage({
           <div className="form-group">
             <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Sparkles size={18} />
-              <span>3. Nút Chọn Ca Nhanh:</span>
+              <span>{t.step3QuickPreset}</span>
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.4rem' }}>
               {presets.map((p, idx) => {

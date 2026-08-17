@@ -78,7 +78,7 @@ export default function Navbar({
               fontWeight: 700
             }}
           >
-            <span>💸 Ứng Lương</span>
+            <span>{t.salaryAdvanceBtn}</span>
           </button>
 
           {/* User Account Info & Logout */}
