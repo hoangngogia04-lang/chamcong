@@ -20,9 +20,120 @@ const BRANCH_COLORS = {
 };
 
 /**
+ * Renders 5 Side-by-Side Branch Salary Advance Mini-Tables below the attendance table
+ * Exactly matching user's screenshot media_1786897566190.png
+ */
+function renderBranchSalaryAdvanceTables(ws, startRow, allEmployees, salaryAdvances = [], branches = [], year, month) {
+  const thinBorder = {
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } }
+  };
+
+  const formattedMonthStr = String(month).padStart(2, '0');
+
+  // Total advance amount per employee for the selected month/year
+  const monthAdvMap = {};
+  (salaryAdvances || []).forEach(adv => {
+    let match = false;
+    if (adv.year && adv.month) {
+      match = Number(adv.year) === Number(year) && Number(adv.month) === Number(month);
+    } else if (adv.date) {
+      match = adv.date.startsWith(`${year}-${formattedMonthStr}`);
+    }
+    if (match) {
+      const empId = adv.empId;
+      monthAdvMap[empId] = (monthAdvMap[empId] || 0) + (Number(adv.amount) || 0);
+    }
+  });
+
+  // 5 side-by-side branch mini-tables starting at specific column offsets:
+  // CN2 (Long Thành): Col E (5), F (6), G (7)
+  // CN1 (Biên Hoà): Col J (10), K (11), L (12)
+  // CN3 (Long Khánh): Col O (15), P (16), Q (17)
+  // CN4 (Xuân Lộc): Col T (20), U (21), V (22)
+  // CN5 (Lê Duẩn): Col Y (25), Z (26), AA (27)
+  const branchTableConfig = [
+    { branchId: 'CN2', startCol: 5 },  // Long Thành
+    { branchId: 'CN1', startCol: 10 }, // Biên Hoà
+    { branchId: 'CN3', startCol: 15 }, // Long Khánh
+    { branchId: 'CN4', startCol: 20 }, // Xuân Lộc
+    { branchId: 'CN5', startCol: 25 }  // Lê Duẩn
+  ];
+
+  branchTableConfig.forEach(cfg => {
+    const branchObj = branches.find(b => b.id === cfg.branchId) || { name: cfg.branchId };
+    const branchEmps = allEmployees.filter(e => e.branchId === cfg.branchId);
+
+    const c1 = cfg.startCol;
+    const c2 = cfg.startCol + 1;
+    const c3 = cfg.startCol + 2;
+
+    // Title Row (Merged 3 cols): "Long Thành", "Biên hoà"...
+    ws.mergeCells(startRow, c1, startRow, c3);
+    const tCell = ws.getCell(startRow, c1);
+    tCell.value = branchObj.name;
+    tCell.font = { name: 'Times New Roman', size: 10, bold: true };
+    tCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getCell(startRow, c1).border = thinBorder;
+    ws.getCell(startRow, c2).border = thinBorder;
+    ws.getCell(startRow, c3).border = thinBorder;
+
+    // Header Row: "stt", "tên", "tiền ứng"
+    const h1 = ws.getCell(startRow + 1, c1);
+    h1.value = 'stt';
+    h1.font = { name: 'Times New Roman', size: 9, bold: true };
+    h1.alignment = { horizontal: 'center', vertical: 'middle' };
+    h1.border = thinBorder;
+
+    const h2 = ws.getCell(startRow + 1, c2);
+    h2.value = 'tên';
+    h2.font = { name: 'Times New Roman', size: 9, bold: true };
+    h2.alignment = { horizontal: 'center', vertical: 'middle' };
+    h2.border = thinBorder;
+
+    const h3 = ws.getCell(startRow + 1, c3);
+    h3.value = 'tiền ứng';
+    h3.font = { name: 'Times New Roman', size: 9, bold: true };
+    h3.alignment = { horizontal: 'center', vertical: 'middle' };
+    h3.border = thinBorder;
+
+    // Fill employees (at least 3 rows matching user's image)
+    const rowCount = Math.max(3, branchEmps.length);
+    for (let i = 0; i < rowCount; i++) {
+      const rIdx = startRow + 2 + i;
+      const emp = branchEmps[i];
+
+      const rCell1 = ws.getCell(rIdx, c1);
+      rCell1.value = i + 1;
+      rCell1.font = { name: 'Times New Roman', size: 9 };
+      rCell1.alignment = { horizontal: 'center', vertical: 'middle' };
+      rCell1.border = thinBorder;
+
+      const rCell2 = ws.getCell(rIdx, c2);
+      rCell2.value = emp ? emp.name : '';
+      rCell2.font = { name: 'Times New Roman', size: 9 };
+      rCell2.alignment = { horizontal: 'center', vertical: 'middle' };
+      rCell2.border = thinBorder;
+
+      const rCell3 = ws.getCell(rIdx, c3);
+      const advAmt = emp ? (monthAdvMap[emp.id] || 0) : 0;
+      rCell3.value = advAmt > 0 ? advAmt : '';
+      if (advAmt > 0) {
+        rCell3.numFmt = '#,##0';
+      }
+      rCell3.font = { name: 'Times New Roman', size: 9, bold: advAmt > 0, color: { argb: advAmt > 0 ? 'FFC00000' : 'FF000000' } };
+      rCell3.alignment = { horizontal: 'right', vertical: 'middle' };
+      rCell3.border = thinBorder;
+    }
+  });
+}
+
+/**
  * Creates a styled Excel Worksheet with Fixed Columns A, B, C (STT, TÊN, CA) & Top 4 Header Rows
  */
-function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, year, month) {
+function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, year, month, allEmployees = [], salaryAdvances = [], branches = []) {
   const daysInMonth = getDaysInMonth(year, month);
   const formattedMonthStr = String(month).padStart(2, '0');
 
@@ -40,19 +151,19 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
   });
 
   // Explicit Column Widths set BEFORE populating cells to fix left pane collapse
-  ws.getColumn(1).width = 8;  // STT (Col A)
-  ws.getColumn(2).width = 20; // TÊN (Col B)
-  ws.getColumn(3).width = 12; // CA (Col C)
+  ws.getColumn(1).width = 6;  // STT (Col A)
+  ws.getColumn(2).width = 18; // TÊN (Col B)
+  ws.getColumn(3).width = 10; // CA (Col C)
 
   for (let d = 1; d <= daysInMonth; d++) {
-    ws.getColumn(d + 3).width = 8;
+    ws.getColumn(d + 3).width = 7;
   }
   const backSectionColStart = 35; // Col AI
   for (let c = daysInMonth + 4; c < backSectionColStart; c++) {
     ws.getColumn(c).width = 4;
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    ws.getColumn(backSectionColStart + (d - 1)).width = 8;
+    ws.getColumn(backSectionColStart + (d - 1)).width = 7;
   }
 
   const thinBorder = {
@@ -288,33 +399,39 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
     currentRow += 2;
   });
+
+  // Render 5 Side-by-Side Branch Salary Advance Mini-Tables below the main attendance grid (Row currentRow + 2)
+  renderBranchSalaryAdvanceTables(ws, currentRow + 2, allEmployees.length > 0 ? allEmployees : employeesList, salaryAdvances, branches, year, month);
 }
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
  * Supports Front Section (Cols D..AH for Ca 1) & Back Section (Cols AI..BA for Part-Time Ca 2)
  * Supports Multi-Sheet Export for ALL Branches or Individual Branch Sheet
+ * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png
  */
-export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '', allBranchesList = []) => {
+export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '', allBranchesList = [], salaryAdvances = []) => {
   const wb = new ExcelJS.Workbook();
   const formattedMonthStr = String(month).padStart(2, '0');
+
+  const allEmps = (allBranchesList && allBranchesList.length > 0) ? employees : employees;
 
   // If ALL branches selected, export Sheet 1 (All Branches) + Sheets for each individual branch!
   if (branchPrefix === 'Tat_Ca_Chi_Nhanh' && allBranchesList && allBranchesList.length > 0) {
     // Sheet 1: Tất Cả Chi Nhánh
-    createAttendanceSheet(wb, `${month}班 (Tất Cả)`, employees, attendanceData, year, month);
+    createAttendanceSheet(wb, `${month}班 (Tất Cả)`, employees, attendanceData, year, month, employees, salaryAdvances, allBranchesList);
 
     // Sheets 2..6: Each Branch tab
     allBranchesList.forEach(branch => {
       const branchEmps = employees.filter(e => e.branchId === branch.id);
       if (branchEmps.length > 0) {
-        createAttendanceSheet(wb, branch.name, branchEmps, attendanceData, year, month);
+        createAttendanceSheet(wb, branch.name, branchEmps, attendanceData, year, month, employees, salaryAdvances, allBranchesList);
       }
     });
   } else {
     // Single Branch Export (e.g. "Xuân Lộc", "Biên Hoà"...)
     const cleanSheetName = branchPrefix ? branchPrefix.replace(/_/g, ' ') : `${month}班`;
-    createAttendanceSheet(wb, cleanSheetName, employees, attendanceData, year, month);
+    createAttendanceSheet(wb, cleanSheetName, employees, attendanceData, year, month, employees, salaryAdvances, allBranchesList);
   }
 
   let prefixStr = '';

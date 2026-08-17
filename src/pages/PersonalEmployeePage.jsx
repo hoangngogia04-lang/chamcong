@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check, Grid, Globe } from 'lucide-react';
+import { Calendar, Clock, User, LogOut, Sun, Moon, CheckCircle, Coffee, Shield, Building, Award, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Lock, Settings, Key, Edit3, X, Check, Grid, Globe, DollarSign } from 'lucide-react';
 import { getDaysInMonth } from '../utils/excelHelper';
 import { getCurrentWeekOfMonth } from '../utils/dateUtils';
 import { calculateEmployeeMonthlyStats } from '../utils/calcUtils';
@@ -15,6 +15,7 @@ export default function PersonalEmployeePage({
   employees = [],
   attendance = {},
   branches = [],
+  salaryAdvances = [],
   weeklyRosters = {},
   theme,
   setTheme,
@@ -55,6 +56,18 @@ export default function PersonalEmployeePage({
   const daysInMonth = getDaysInMonth(year, month);
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const formattedMonthStr = String(month).padStart(2, '0');
+
+  const myAdvances = (salaryAdvances || []).filter(adv => {
+    if (adv.empId !== employee?.id) return false;
+    if (adv.year && adv.month) {
+      return Number(adv.year) === Number(year) && Number(adv.month) === Number(month);
+    }
+    if (adv.date) {
+      return adv.date.startsWith(`${year}-${formattedMonthStr}`);
+    }
+    return false;
+  });
+  const myTotalAdvance = myAdvances.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
 
   // Real-time date constraint
   const todayDate = new Date();
@@ -375,6 +388,21 @@ export default function PersonalEmployeePage({
               </div>
               <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>
                 {stats.totalOffDays} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t.dayUnit}</small>
+              </div>
+            </div>
+          </div>
+
+          {/* Stat 4: Số Tiền Đã Ứng */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <DollarSign size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {lang === 'zh' ? '預支薪資' : 'Số Tiền Đã Ứng'}
+              </div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent-amber)' }}>
+                {myTotalAdvance.toLocaleString('vi-VN')} <small style={{ fontSize: '0.8rem', fontWeight: 500 }}>đ</small>
               </div>
             </div>
           </div>

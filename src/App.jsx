@@ -7,6 +7,7 @@ import UsersPage from './pages/UsersPage';
 import LoginPage from './pages/LoginPage';
 import ShiftEditModal from './components/ShiftEditModal';
 import EmployeeDetailModal from './components/EmployeeDetailModal';
+import SalaryAdvanceModal from './components/SalaryAdvanceModal';
 
 import PersonalEmployeePage from './pages/PersonalEmployeePage';
 import WeeklyRosterPage from './pages/WeeklyRosterPage';
@@ -48,6 +49,29 @@ export default function App() {
   const [activeBranchId, setActiveBranchId] = useState('ALL');
   const [employees, setEmployees] = useState(DEFAULT_EMPLOYEES);
   const [attendance, setAttendance] = useState(DEFAULT_ATTENDANCE);
+
+  // Salary Advances State
+  const [salaryAdvances, setSalaryAdvances] = useState(() => {
+    const saved = localStorage.getItem('quan_ly_cham_cong_salary_advances');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
+
+  const handleSaveAdvance = (newAdv) => {
+    setSalaryAdvances(prev => {
+      const updated = [...prev, newAdv];
+      localStorage.setItem('quan_ly_cham_cong_salary_advances', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleDeleteAdvance = (advId) => {
+    setSalaryAdvances(prev => {
+      const updated = prev.filter(a => a.id !== advId);
+      localStorage.setItem('quan_ly_cham_cong_salary_advances', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Weekly Shift Rosters State (Key: `${branch_id}_${year}_${month}_W${week_num}`)
   // Preset sample matching user's screenshot for CN1 (Biên Hoà) Week 1 August 2026!
@@ -237,7 +261,7 @@ export default function App() {
       : (activeBranch ? activeBranch.name.replace(/\s+/g, '_') : `Chi_Nhanh_${activeBranchId}`);
 
     const empsToExport = activeBranchId === 'ALL' ? employees : visibleEmployees;
-    exportToExcel(year, month, empsToExport, attendance, branchPrefix, branches);
+    exportToExcel(year, month, empsToExport, attendance, branchPrefix, branches, salaryAdvances);
   };
 
   // Employee CRUD handlers
@@ -311,6 +335,7 @@ export default function App() {
         employees={employees}
         attendance={attendance}
         branches={branches}
+        salaryAdvances={salaryAdvances}
         weeklyRosters={weeklyRosters}
         theme={theme}
         setTheme={setTheme}
@@ -339,6 +364,7 @@ export default function App() {
         lang={lang}
         setLang={setLang}
         onExport={handleExport}
+        onOpenSalaryModal={() => setIsSalaryModalOpen(true)}
         onLogout={handleLogout}
       />
 
@@ -448,6 +474,20 @@ export default function App() {
           lang={lang}
         />
       )}
+
+      {/* Salary Advance Modal */}
+      <SalaryAdvanceModal
+        isOpen={isSalaryModalOpen}
+        onClose={() => setIsSalaryModalOpen(false)}
+        employees={employees}
+        branches={branches}
+        year={year}
+        month={month}
+        salaryAdvances={salaryAdvances}
+        onSaveAdvance={handleSaveAdvance}
+        onDeleteAdvance={handleDeleteAdvance}
+        lang={lang}
+      />
     </div>
   );
 }

@@ -15,6 +15,7 @@ export default function Navbar({
   lang = 'vi',
   setLang,
   onExport,
+  onOpenSalaryModal,
   onLogout
 }) {
   const isAdmin = currentUser?.role === 'admin';
@@ -63,6 +64,21 @@ export default function Navbar({
           >
             <Download size={16} />
             <span>{t.exportExcel}</span>
+          </button>
+
+          {/* Salary Advance Button (Ứng Lương) */}
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenSalaryModal}
+            title="Quản Lý Ứng Lương Nhân Viên"
+            style={{
+              borderColor: 'var(--accent-amber)',
+              color: 'var(--accent-amber)',
+              background: 'rgba(245, 158, 11, 0.1)',
+              fontWeight: 700
+            }}
+          >
+            <span>💸 Ứng Lương</span>
           </button>
 
           {/* User Account Info & Logout */}
