@@ -1,5 +1,6 @@
 import React from 'react';
 import { getDaysInMonth } from '../utils/excelHelper';
+import { getMergedFullTimeShift } from '../utils/calcUtils';
 import { Lock } from 'lucide-react';
 import { translations } from '../utils/language';
 
@@ -151,6 +152,13 @@ export default function AttendanceGrid({
                         const end2Val = rec.end2 || '';
 
                         const isOff = startVal === 'OFF';
+                        const isPartTime = emp.type === 'parttime';
+
+                        let displayStart = startVal;
+                        if (!isPartTime && startVal && endVal && start2Val && end2Val) {
+                          const merged = getMergedFullTimeShift(startVal, endVal, start2Val, end2Val);
+                          displayStart = merged.start;
+                        }
 
                         return (
                           <td
@@ -161,10 +169,10 @@ export default function AttendanceGrid({
                           >
                             {isOff ? (
                               <span className="text-off">OFF</span>
-                            ) : startVal ? (
+                            ) : displayStart ? (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1 }}>
-                                <span className="text-start-time">{startVal}</span>
-                                {start2Val && (
+                                <span className="text-start-time">{displayStart}</span>
+                                {isPartTime && start2Val && (
                                   <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600, marginTop: '2px' }}>
                                     ({start2Val})
                                   </span>
@@ -194,6 +202,13 @@ export default function AttendanceGrid({
                         const end2Val = rec.end2 || '';
 
                         const isOff = startVal === 'OFF';
+                        const isPartTime = emp.type === 'parttime';
+
+                        let displayEnd = endVal;
+                        if (!isPartTime && startVal && endVal && start2Val && end2Val) {
+                          const merged = getMergedFullTimeShift(startVal, endVal, start2Val, end2Val);
+                          displayEnd = merged.end;
+                        }
 
                         return (
                           <td
@@ -204,10 +219,10 @@ export default function AttendanceGrid({
                           >
                             {isOff ? (
                               <span className="text-off" style={{ opacity: 0.3 }}>-</span>
-                            ) : endVal ? (
+                            ) : displayEnd ? (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1 }}>
-                                <span className="text-end-time">{endVal}</span>
-                                {end2Val && (
+                                <span className="text-end-time">{displayEnd}</span>
+                                {isPartTime && end2Val && (
                                   <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600, marginTop: '2px' }}>
                                     ({end2Val})
                                   </span>

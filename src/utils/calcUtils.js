@@ -4,6 +4,43 @@
  * Any hours worked beyond 9h/day count as Overtime (Tăng Ca).
  */
 
+/**
+ * Calculates merged shift time for Full-Time split shifts (e.g. 8h-13h + 17h-22h = 10h work -> 08:00 - 18:00)
+ */
+export function getMergedFullTimeShift(start, end, start2, end2) {
+  if (!start || start === 'OFF') return { start: 'OFF', end: '' };
+  if (!start2 || !end2) return { start, end };
+
+  let totalMins = 0;
+  if (typeof start === 'string' && typeof end === 'string' && start.includes(':') && end.includes(':')) {
+    const [h1, m1] = start.split(':').map(Number);
+    const [h2, m2] = end.split(':').map(Number);
+    if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+      totalMins += Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+    }
+  }
+
+  if (typeof start2 === 'string' && typeof end2 === 'string' && start2.includes(':') && end2.includes(':')) {
+    const [h1, m1] = start2.split(':').map(Number);
+    const [h2, m2] = end2.split(':').map(Number);
+    if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+      totalMins += Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+    }
+  }
+
+  if (totalMins <= 0) return { start, end };
+
+  const [sH, sM] = start.split(':').map(Number);
+  const totalEndMins = (sH * 60 + sM) + totalMins;
+  const eH = String(Math.floor(totalEndMins / 60) % 24).padStart(2, '0');
+  const eM = String(totalEndMins % 60).padStart(2, '0');
+
+  return {
+    start,
+    end: `${eH}:${eM}`
+  };
+}
+
 export function calculateEmployeeMonthlyStats(emp, attendanceMap = {}, daysArray = [], year, month) {
   const isPartTime = (emp?.type || 'fulltime') === 'parttime';
   const formattedMonthStr = String(month).padStart(2, '0');

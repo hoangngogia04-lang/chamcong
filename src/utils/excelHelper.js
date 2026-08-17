@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { getMergedFullTimeShift } from './calcUtils';
 
 /**
  * Gets the number of days in a given month and year
@@ -228,13 +229,23 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
         endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
         endCell.border = thinBorder;
       } else {
-        startCell.value = rec.start || '';
+        let displayStart = rec.start || '';
+        let displayEnd = rec.end || '';
+
+        const isPartTime = emp.type === 'parttime';
+        if (!isPartTime && rec.start && rec.end && rec.start2 && rec.end2) {
+          const merged = getMergedFullTimeShift(rec.start, rec.end, rec.start2, rec.end2);
+          displayStart = merged.start;
+          displayEnd = merged.end;
+        }
+
+        startCell.value = displayStart;
         startCell.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF000000' } };
         startCell.alignment = { horizontal: 'center', vertical: 'middle' };
         startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
         startCell.border = thinBorder;
 
-        endCell.value = rec.end || '';
+        endCell.value = displayEnd;
         endCell.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF000000' } };
         endCell.alignment = { horizontal: 'center', vertical: 'middle' };
         endCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
@@ -242,7 +253,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       }
     }
 
-    // Attendance records for Back Section (Part-Time Ca 2)
+    // Attendance records for Back Section (Part-Time Ca 2 ONLY)
     for (let d = 1; d <= daysInMonth; d++) {
       const colIdx = backSectionColStart + (d - 1);
       const dayStr = String(d).padStart(2, '0');
@@ -252,22 +263,23 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const backStartCell = ws.getCell(rStart, colIdx);
       const backEndCell = ws.getCell(rEnd, colIdx);
 
-      const isSplitShiftRec = Boolean(
+      const isPartTime = emp.type === 'parttime';
+      const isSplitShiftRec = isPartTime && Boolean(
         rec.start2 ||
         rec.end2 ||
         rec.isSplitShift ||
-        (rec.presetLabel && String(rec.presetLabel).toLowerCase().includes('gãy')) ||
-        (rec.start === '08:00' && rec.end === '22:00')
+        (rec.presetLabel && String(rec.presetLabel).toLowerCase().includes('gãy'))
       );
       const backBgColor = isSplitShiftRec ? 'FFFFF200' : 'FFFFFFFF';
 
-      backStartCell.value = rec.start2 || '';
+      // Only Part-Time populates Ca 2 in Back Section
+      backStartCell.value = isPartTime ? (rec.start2 || '') : '';
       backStartCell.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF7030A0' } };
       backStartCell.alignment = { horizontal: 'center', vertical: 'middle' };
       backStartCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: backBgColor } };
       backStartCell.border = thinBorder;
 
-      backEndCell.value = rec.end2 || '';
+      backEndCell.value = isPartTime ? (rec.end2 || '') : '';
       backEndCell.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF7030A0' } };
       backEndCell.alignment = { horizontal: 'center', vertical: 'middle' };
       backEndCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: backBgColor } };
