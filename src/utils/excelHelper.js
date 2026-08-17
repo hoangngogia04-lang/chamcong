@@ -20,10 +20,11 @@ const BRANCH_COLORS = {
 };
 
 /**
- * Renders 5 Side-by-Side Branch Salary Advance Mini-Tables below the attendance table
- * Exactly matching user's screenshot media_1786897566190.png
+ * Renders Side-by-Side Branch Salary Advance Mini-Tables below the attendance table
+ * Exactly matching user's screenshot media_1786897566190.png & media_1786902640441.png
+ * Single branch export renders ONLY that branch's table, ALL branches export renders 5 tables.
  */
-function renderBranchSalaryAdvanceTables(ws, startRow, allEmployees, salaryAdvances = [], branches = [], year, month) {
+function renderBranchSalaryAdvanceTables(ws, startRow, allEmployees, salaryAdvances = [], branches = [], year, month, targetBranchId = 'ALL') {
   const thinBorder = {
     top: { style: 'thin', color: { argb: 'FF000000' } },
     bottom: { style: 'thin', color: { argb: 'FF000000' } },
@@ -48,12 +49,6 @@ function renderBranchSalaryAdvanceTables(ws, startRow, allEmployees, salaryAdvan
     }
   });
 
-  // 5 side-by-side branch mini-tables starting at specific column offsets:
-  // CN2 (Long Thành): Col E (5), F (6), G (7)
-  // CN1 (Biên Hoà): Col J (10), K (11), L (12)
-  // CN3 (Long Khánh): Col O (15), P (16), Q (17)
-  // CN4 (Xuân Lộc): Col T (20), U (21), V (22)
-  // CN5 (Lê Duẩn): Col Y (25), Z (26), AA (27)
   const branchTableConfig = [
     { branchId: 'CN2', startCol: 5 },  // Long Thành
     { branchId: 'CN1', startCol: 10 }, // Biên Hoà
@@ -62,7 +57,13 @@ function renderBranchSalaryAdvanceTables(ws, startRow, allEmployees, salaryAdvan
     { branchId: 'CN5', startCol: 25 }  // Lê Duẩn
   ];
 
-  branchTableConfig.forEach(cfg => {
+  // Filter tables to render: if targetBranchId is a specific branch, render ONLY that branch's table!
+  let tablesToRender = branchTableConfig;
+  if (targetBranchId && targetBranchId !== 'ALL' && targetBranchId !== 'Tat_Ca_Chi_Nhanh') {
+    tablesToRender = branchTableConfig.filter(cfg => cfg.branchId === targetBranchId);
+  }
+
+  tablesToRender.forEach(cfg => {
     const branchObj = branches.find(b => b.id === cfg.branchId) || { name: cfg.branchId };
     const branchEmps = allEmployees.filter(e => e.branchId === cfg.branchId);
 
@@ -133,7 +134,7 @@ function renderBranchSalaryAdvanceTables(ws, startRow, allEmployees, salaryAdvan
 /**
  * Creates a styled Excel Worksheet with Fixed Columns A, B, C (STT, TÊN, CA) & Top 4 Header Rows
  */
-function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, year, month, allEmployees = [], salaryAdvances = [], branches = []) {
+function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, year, month, allEmployees = [], salaryAdvances = [], branches = [], targetBranchId = 'ALL') {
   const daysInMonth = getDaysInMonth(year, month);
   const formattedMonthStr = String(month).padStart(2, '0');
 
@@ -400,38 +401,48 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
     currentRow += 2;
   });
 
-  // Render 5 Side-by-Side Branch Salary Advance Mini-Tables below the main attendance grid (Row currentRow + 2)
-  renderBranchSalaryAdvanceTables(ws, currentRow + 2, allEmployees.length > 0 ? allEmployees : employeesList, salaryAdvances, branches, year, month);
+  // Render Side-by-Side Branch Salary Advance Mini-Tables below main attendance grid (Row currentRow + 2)
+  renderBranchSalaryAdvanceTables(
+    ws,
+    currentRow + 2,
+    allEmployees.length > 0 ? allEmployees : employeesList,
+    salaryAdvances,
+    branches,
+    year,
+    month,
+    targetBranchId
+  );
 }
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
  * Supports Front Section (Cols D..AH for Ca 1) & Back Section (Cols AI..BA for Part-Time Ca 2)
  * Supports Multi-Sheet Export for ALL Branches or Individual Branch Sheet
- * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png
+ * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png & media_1786902640441.png
  */
 export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '', allBranchesList = [], salaryAdvances = []) => {
   const wb = new ExcelJS.Workbook();
   const formattedMonthStr = String(month).padStart(2, '0');
 
-  const allEmps = (allBranchesList && allBranchesList.length > 0) ? employees : employees;
-
   // If ALL branches selected, export Sheet 1 (All Branches) + Sheets for each individual branch!
   if (branchPrefix === 'Tat_Ca_Chi_Nhanh' && allBranchesList && allBranchesList.length > 0) {
-    // Sheet 1: Tất Cả Chi Nhánh
-    createAttendanceSheet(wb, `${month}班 (Tất Cả)`, employees, attendanceData, year, month, employees, salaryAdvances, allBranchesList);
+    // Sheet 1: Tất Cả Chi Nhánh -> Renders all 5 branch tables at bottom
+    createAttendanceSheet(wb, `${month}班 (Tất Cả)`, employees, attendanceData, year, month, employees, salaryAdvances, allBranchesList, 'ALL');
 
-    // Sheets 2..6: Each Branch tab
+    // Sheets 2..6: Each Branch tab -> Renders ONLY that branch's table at bottom
     allBranchesList.forEach(branch => {
       const branchEmps = employees.filter(e => e.branchId === branch.id);
       if (branchEmps.length > 0) {
-        createAttendanceSheet(wb, branch.name, branchEmps, attendanceData, year, month, employees, salaryAdvances, allBranchesList);
+        createAttendanceSheet(wb, branch.name, branchEmps, attendanceData, year, month, employees, salaryAdvances, allBranchesList, branch.id);
       }
     });
   } else {
-    // Single Branch Export (e.g. "Xuân Lộc", "Biên Hoà"...)
+    // Single Branch Export (e.g. "Long_Thành", "Biên_Hoà"...)
+    const targetBranch = (allBranchesList || []).find(b => b.name.replace(/\s+/g, '_') === branchPrefix || b.id === branchPrefix);
+    const targetBranchId = targetBranch ? targetBranch.id : (employees.length > 0 ? employees[0].branchId : 'ALL');
+
     const cleanSheetName = branchPrefix ? branchPrefix.replace(/_/g, ' ') : `${month}班`;
-    createAttendanceSheet(wb, cleanSheetName, employees, attendanceData, year, month, employees, salaryAdvances, allBranchesList);
+    createAttendanceSheet(wb, cleanSheetName, employees, attendanceData, year, month, employees, salaryAdvances, allBranchesList, targetBranchId);
   }
 
   let prefixStr = '';
