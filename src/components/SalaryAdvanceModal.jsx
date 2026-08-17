@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Plus, Trash2, Calendar, FileText, User, CheckCircle, AlertCircle } from 'lucide-react';
 import { translations } from '../utils/language';
 
@@ -7,6 +7,7 @@ export default function SalaryAdvanceModal({
   onClose,
   employees = [],
   branches = [],
+  activeBranchId = 'ALL',
   year,
   month,
   salaryAdvances = [],
@@ -16,7 +17,8 @@ export default function SalaryAdvanceModal({
 }) {
   const t = translations[lang] || translations.vi;
 
-  const [selectedEmpId, setSelectedEmpId] = useState(employees[0]?.id || '');
+  const [filterBranchId, setFilterBranchId] = useState(activeBranchId);
+  const [selectedEmpId, setSelectedEmpId] = useState('');
   const [advanceDate, setAdvanceDate] = useState(() => {
     const today = new Date();
     const d = String(today.getDate()).padStart(2, '0');
@@ -28,6 +30,31 @@ export default function SalaryAdvanceModal({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [activeTab, setActiveTab] = useState('add'); // 'add' or 'history'
+
+  // Update filter branch when activeBranchId or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFilterBranchId(activeBranchId);
+    }
+  }, [activeBranchId, isOpen]);
+
+  // Filter employees by branch
+  const filteredEmployees = employees.filter(emp => {
+    if (filterBranchId && filterBranchId !== 'ALL') {
+      return emp.branchId === filterBranchId;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    if (filteredEmployees.length > 0) {
+      if (!filteredEmployees.some(e => e.id === selectedEmpId)) {
+        setSelectedEmpId(filteredEmployees[0].id);
+      }
+    } else {
+      setSelectedEmpId('');
+    }
+  }, [filterBranchId, isOpen, employees]);
 
   if (!isOpen) return null;
 
@@ -159,6 +186,26 @@ export default function SalaryAdvanceModal({
               </div>
             )}
 
+            {/* Filter Branch (if viewing ALL branches) */}
+            {activeBranchId === 'ALL' && (
+              <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.35rem', display: 'block' }}>
+                  🏢 Lọc Chi Nhánh:
+                </label>
+                <select
+                  className="input"
+                  value={filterBranchId}
+                  onChange={e => setFilterBranchId(e.target.value)}
+                  style={{ width: '100%', padding: '0.55rem', fontSize: '0.9rem' }}
+                >
+                  <option value="ALL">-- Tất Cả Chi Nhánh --</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Select Employee */}
             <div className="form-group">
               <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.35rem', display: 'block' }}>
@@ -170,14 +217,18 @@ export default function SalaryAdvanceModal({
                 onChange={e => setSelectedEmpId(e.target.value)}
                 style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
               >
-                {employees.map(emp => {
-                  const bObj = branches.find(b => b.id === emp.branchId);
-                  return (
-                    <option key={emp.id} value={emp.id}>
-                      #{emp.stt || 1} - {emp.name} ({bObj?.name || 'CN'})
-                    </option>
-                  );
-                })}
+                {filteredEmployees.length === 0 ? (
+                  <option value="">(Không có nhân viên thuộc chi nhánh này)</option>
+                ) : (
+                  filteredEmployees.map(emp => {
+                    const bObj = branches.find(b => b.id === emp.branchId);
+                    return (
+                      <option key={emp.id} value={emp.id}>
+                        #{emp.stt || 1} - {emp.name} ({bObj?.name || 'CN'})
+                      </option>
+                    );
+                  })
+                )}
               </select>
             </div>
 

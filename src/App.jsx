@@ -481,6 +481,7 @@ export default function App() {
         onClose={() => setIsSalaryModalOpen(false)}
         employees={employees}
         branches={branches}
+        activeBranchId={activeBranchId}
         year={year}
         month={month}
         salaryAdvances={salaryAdvances}
