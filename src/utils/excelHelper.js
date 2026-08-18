@@ -20,6 +20,71 @@ const BRANCH_COLORS = {
 };
 
 /**
+ * Renders Payroll Summary Block below each employee matching physical payslip in image
+ * Headers: cơ bản | tăng ca | tiền thưởng | tiền ăn | tiền ăn tối | tiền cc | Tập ze | ao | tổng số tiền
+ * Values left empty for accountant manual calculation as requested by user.
+ */
+function renderEmployeePayrollSummaryBlock(ws, startRow) {
+  const thinBorder = {
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } }
+  };
+
+  const payrollHeaders = [
+    { label: 'cơ bản', col: 1 },
+    { label: 'tăng ca', col: 2 },
+    { label: 'tiền thưởng', col: 3 },
+    { label: 'tiền ăn', col: 4 },
+    { label: 'tiền ăn tối', col: 5 },
+    { label: 'tiền cc', col: 6 },
+    { label: 'Tập ze', col: 7 },
+    { label: 'ao', col: 8 }
+  ];
+
+  // Header Row (startRow)
+  payrollHeaders.forEach(item => {
+    const cell = ws.getCell(startRow, item.col);
+    cell.value = item.label;
+    cell.font = { name: 'Times New Roman', size: 9, bold: true };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+    cell.border = thinBorder;
+  });
+
+  // Merged Header for "tổng số tiền" (Cols 9 & 10)
+  ws.mergeCells(startRow, 9, startRow, 10);
+  const totalHeaderCell = ws.getCell(startRow, 9);
+  totalHeaderCell.value = 'tổng số tiền';
+  totalHeaderCell.font = { name: 'Times New Roman', size: 9, bold: true };
+  totalHeaderCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  totalHeaderCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  ws.getCell(startRow, 9).border = thinBorder;
+  ws.getCell(startRow, 10).border = thinBorder;
+
+  // Row startRow + 1: Empty cells with borders for Accountant Unit Rate / Quantity
+  for (let c = 1; c <= 8; c++) {
+    const cell = ws.getCell(startRow + 1, c);
+    cell.value = '';
+    cell.border = thinBorder;
+  }
+  ws.mergeCells(startRow + 1, 9, startRow + 1, 10);
+  ws.getCell(startRow + 1, 9).border = thinBorder;
+  ws.getCell(startRow + 1, 10).border = thinBorder;
+
+  // Row startRow + 2: Empty cells with borders for Accountant Total Amount
+  for (let c = 1; c <= 8; c++) {
+    const cell = ws.getCell(startRow + 2, c);
+    cell.value = '';
+    cell.border = thinBorder;
+  }
+  ws.mergeCells(startRow + 2, 9, startRow + 2, 10);
+  ws.getCell(startRow + 2, 9).border = thinBorder;
+  ws.getCell(startRow + 2, 10).border = thinBorder;
+}
+
+/**
  * Renders Side-by-Side Branch Salary Advance Mini-Tables below the attendance table
  * Exactly matching user's screenshot media_1786897566190.png & media_1786902640441.png
  * Single branch export renders ONLY that branch's table, ALL branches export renders 5 tables.
@@ -398,7 +463,11 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       backEndCell.border = thinBorder;
     }
 
-    currentRow += 2;
+    // Render Payroll Summary Block matching physical paper slip below employee's attendance rows (rEnd + 1)
+    renderEmployeePayrollSummaryBlock(ws, rEnd + 1);
+
+    // 2 attendance rows + 3 payroll table rows + 2 blank separator rows = 7 rows total per employee!
+    currentRow += 7;
   });
 
   // Render Side-by-Side Branch Salary Advance Mini-Tables below main attendance grid (Row currentRow + 2)
