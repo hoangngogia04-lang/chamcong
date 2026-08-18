@@ -58,9 +58,30 @@ function calcFullTimeOvertimeHHMM(startStr, endStr) {
 }
 
 /**
- * Calculates total working hours for an employee in the selected month
+ * Calculates total working days count for a Full-Time employee in the selected month
  */
-function calcEmployeeTotalMonthHours(emp, attendanceData, year, month, daysInMonth) {
+function calcFullTimeTotalWorkingDays(emp, attendanceData, year, month, daysInMonth) {
+  const formattedMonthStr = String(month).padStart(2, '0');
+  const empAtt = (attendanceData && attendanceData[emp.id]) || {};
+  let count = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dayStr = String(d).padStart(2, '0');
+    const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
+    const rec = empAtt[dateKey] || {};
+
+    if (rec.start && rec.start !== 'OFF' && rec.end && rec.end !== '-') {
+      count++;
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Calculates total working hours for a Part-Time employee in the selected month (returns pure number)
+ */
+function calcEmployeeTotalMonthHoursNumber(emp, attendanceData, year, month, daysInMonth) {
   const formattedMonthStr = String(month).padStart(2, '0');
   const empAtt = (attendanceData && attendanceData[emp.id]) || {};
   let totalMins = 0;
@@ -99,7 +120,7 @@ function calcEmployeeTotalMonthHours(emp, attendanceData, year, month, daysInMon
   }
 
   const hours = (totalMins / 60).toFixed(1);
-  return `${hours}h`;
+  return Number(hours);
 }
 
 /**
@@ -116,9 +137,9 @@ const BRANCH_COLORS = {
 /**
  * Renders Payroll Summary Block below each employee matching physical payslip in image
  * Headers: cơ bản | tăng ca | tiền thưởng | tiền ăn | tiền ăn tối | tiền cc | Tập ze | ao | tổng số tiền
- * Bottom left box displays total month working hours ("Tổng giờ: XXX.Xh")
+ * Bottom left box displays pure number (e.g. 26 for Full-Time working days or 135.0 for Part-Time working hours) without any text labels.
  */
-function renderEmployeePayrollSummaryBlock(ws, startRow, summaryLabelStr = '') {
+function renderEmployeePayrollSummaryBlock(ws, startRow, summaryValue = '') {
   const thinBorder = {
     top: { style: 'thin', color: { argb: 'FF000000' } },
     bottom: { style: 'thin', color: { argb: 'FF000000' } },
@@ -167,11 +188,11 @@ function renderEmployeePayrollSummaryBlock(ws, startRow, summaryLabelStr = '') {
   ws.getCell(startRow + 1, 9).border = thinBorder;
   ws.getCell(startRow + 1, 10).border = thinBorder;
 
-  // Row startRow + 2: Col 1 & 2 merged for Summary Cell ("Tổng giờ: 135.0h")
+  // Row startRow + 2: Col 1 & 2 merged for Summary Cell (Pure Number: 26 or 135.0)
   ws.mergeCells(startRow + 2, 1, startRow + 2, 2);
   const totCell = ws.getCell(startRow + 2, 1);
-  totCell.value = summaryLabelStr;
-  totCell.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FFC00000' } };
+  totCell.value = summaryValue;
+  totCell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFC00000' } };
   totCell.alignment = { horizontal: 'center', vertical: 'middle' };
   totCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF200' } };
   ws.getCell(startRow + 2, 1).border = thinBorder;
@@ -368,9 +389,9 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
   let currentRow = 4;
   employeesList.forEach((emp, index) => {
     const isPartTime = emp.type === 'parttime';
-    // Full-time: 4 rows (Lên Ca, Xuống Ca, Tăng Ca, Ngày Làm)
+    // Full-time: 3 rows (Lên Ca, Xuống Ca, Tăng Ca)
     // Part-time: 6 rows (Lên Ca 1, Xuống Ca 1, Số tiếng Ca 1, Lên Ca 2, Xuống Ca 2, Số tiếng Ca 2)
-    const numShiftRows = isPartTime ? 6 : 4;
+    const numShiftRows = isPartTime ? 6 : 3;
 
     // --- Per-Employee Date Header Row ---
     const headerRow = currentRow;
@@ -490,7 +511,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       ca6.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
       ca6.border = thinBorder;
     } else {
-      // Full-Time: 4 rows (STT, TÊN)
+      // Full-Time: 3 rows (STT, TÊN)
       ws.mergeCells(rStart, 1, rEnd, 1);
       const sttCell = ws.getCell(rStart, 1);
       sttCell.value = empStt;
@@ -510,7 +531,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
         ws.getCell(r, 2).border = thinBorder;
       }
 
-      // Col C Labels for Full-Time (4 rows)
+      // Col C Labels for Full-Time (3 rows: Lên Ca, Xuống Ca, Tăng Ca)
       const ca1 = ws.getCell(rStart, 3);
       ca1.value = 'Lên Ca';
       ca1.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF008000' } };
@@ -531,13 +552,6 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       ca3.alignment = { horizontal: 'center', vertical: 'middle' };
       ca3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
       ca3.border = thinBorder;
-
-      const ca4 = ws.getCell(rStart + 3, 3);
-      ca4.value = 'Ngày Làm';
-      ca4.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF000000' } };
-      ca4.alignment = { horizontal: 'center', vertical: 'middle' };
-      ca4.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
-      ca4.border = thinBorder;
     }
 
     // Attendance Data Days 1..31
@@ -560,11 +574,10 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const currentCellBg = isSplitShiftRec ? 'FFFFF200' : shiftBgColor;
 
       if (!isPartTime) {
-        // Full-Time (4 rows: Lên Ca, Xuống Ca, Tăng Ca, Ngày Làm)
+        // Full-Time (3 rows: Lên Ca, Xuống Ca, Tăng Ca)
         const cell1 = ws.getCell(rStart, colIdx);
         const cell2 = ws.getCell(rStart + 1, colIdx);
         const cell3 = ws.getCell(rStart + 2, colIdx);
-        const cell4 = ws.getCell(rStart + 3, colIdx);
 
         if (rec.start === 'OFF') {
           cell1.value = 'OFF';
@@ -582,12 +595,6 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell3.value = '';
           cell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell3.border = thinBorder;
-
-          cell4.value = 'OFF';
-          cell4.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FFFF0000' } };
-          cell4.alignment = { horizontal: 'center', vertical: 'middle' };
-          cell4.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
-          cell4.border = thinBorder;
         } else {
           let displayStart = rec.start || '';
           let displayEnd = rec.end || '';
@@ -619,14 +626,6 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell3.alignment = { horizontal: 'center', vertical: 'middle' };
           cell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell3.border = thinBorder;
-
-          // Row 4: Ngày Làm (1 nếu đi làm, empty nếu không đi làm)
-          const hasWorked = Boolean(displayStart && displayEnd);
-          cell4.value = hasWorked ? 1 : '';
-          cell4.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF000000' } };
-          cell4.alignment = { horizontal: 'center', vertical: 'middle' };
-          cell4.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
-          cell4.border = thinBorder;
         }
       } else {
         // Part-Time (6 rows: Ca 1, Ca 1 Dur, Ca 2, Ca 2 Dur)
@@ -711,9 +710,16 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       }
     }
 
-    // Calculate & Render Total Month Hours in Payroll Summary Block (Bottom Left Box) for ALL employees
-    const totalMonthHoursStr = calcEmployeeTotalMonthHours(emp, attendanceData, year, month, daysInMonth);
-    renderEmployeePayrollSummaryBlock(ws, rEnd + 1, `Tổng giờ: ${totalMonthHoursStr}`);
+    // Render Pure Number in Payroll Summary Block (Bottom Left Box):
+    // Full-Time: Pure number of working days (e.g. 26)
+    // Part-Time: Pure number of total month hours (e.g. 135.0)
+    if (!isPartTime) {
+      const daysCount = calcFullTimeTotalWorkingDays(emp, attendanceData, year, month, daysInMonth);
+      renderEmployeePayrollSummaryBlock(ws, rEnd + 1, daysCount);
+    } else {
+      const totalMonthHoursVal = calcEmployeeTotalMonthHoursNumber(emp, attendanceData, year, month, daysInMonth);
+      renderEmployeePayrollSummaryBlock(ws, rEnd + 1, totalMonthHoursVal);
+    }
 
     // Advance attendance rows + 3 payroll table rows + 2 blank separator rows!
     currentRow += (numShiftRows + 5);
@@ -734,10 +740,9 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
- * Supports Per-Employee Date Header row (1..31)
- * Full-Time 4 rows: Lên Ca, Xuống Ca, Tăng Ca (1:00, 0:00, 5:00), Ngày Làm (1 / OFF)
+ * Full-Time 3 rows: Lên Ca, Xuống Ca, Tăng Ca (1:00, 0:00, 5:00)
  * Part-Time 6 rows: Lên Ca 1, Xuống Ca 1, Số tiếng Ca 1, Lên Ca 2, Xuống Ca 2, Số tiếng Ca 2
- * Both Full-Time & Part-Time show "Tổng giờ: XXX.Xh" in the bottom left yellow box of Payroll Block
+ * Bottom left yellow box displays PURE NUMBER (e.g. 26 for Full-Time working days, 135.0 for Part-Time working hours) without any text labels.
  * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png & media_1786902640441.png
  */
 export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '', allBranchesList = [], salaryAdvances = []) => {
