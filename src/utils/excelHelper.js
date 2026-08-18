@@ -9,6 +9,28 @@ export const getDaysInMonth = (year, month) => {
 };
 
 /**
+ * Calculates duration between start and end time in HH:MM format (e.g. '08:00' & '13:00' -> '05:00')
+ */
+function calcShiftDurationHHMM(startStr, endStr) {
+  if (!startStr || !endStr || startStr === 'OFF' || endStr === '-') return '';
+  if (typeof startStr !== 'string' || typeof endStr !== 'string') return '';
+  if (!startStr.includes(':') || !endStr.includes(':')) return '';
+
+  const [h1, m1] = startStr.split(':').map(Number);
+  const [h2, m2] = endStr.split(':').map(Number);
+
+  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return '';
+
+  let diffMins = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (diffMins < 0) diffMins += 24 * 60; // Midnight rollover if any
+
+  const dH = String(Math.floor(diffMins / 60)).padStart(2, '0');
+  const dM = String(diffMins % 60).padStart(2, '0');
+
+  return `${dH}:${dM}`;
+}
+
+/**
  * Branch highlight colors for employee rows (matching original cham cong.xlsx)
  */
 const BRANCH_COLORS = {
@@ -302,7 +324,9 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
   let currentRow = 5;
   employeesList.forEach((emp, index) => {
     const isPartTime = emp.type === 'parttime';
-    const numShiftRows = isPartTime ? 4 : 2;
+    // Full-time: 3 rows (Lên Ca, Xuống Ca, Tổng tiếng)
+    // Part-time: 6 rows (Lên Ca 1, Xuống Ca 1, Tổng Ca 1, Lên Ca 2, Xuống Ca 2, Tổng Ca 2)
+    const numShiftRows = isPartTime ? 6 : 3;
 
     const rStart = currentRow;
     const rEnd = currentRow + numShiftRows - 1;
@@ -335,7 +359,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
     // CA Labels (Col C)
     if (!isPartTime) {
-      // Full-Time (2 rows)
+      // Full-Time (3 rows)
       const ca1 = ws.getCell(rStart, 3);
       ca1.value = 'Lên Ca';
       ca1.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF008000' } };
@@ -349,8 +373,13 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       ca2.alignment = { horizontal: 'center', vertical: 'middle' };
       ca2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
       ca2.border = thinBorder;
+
+      const ca3 = ws.getCell(rStart + 2, 3);
+      ca3.value = '';
+      ca3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+      ca3.border = thinBorder;
     } else {
-      // Part-Time (4 rows: Ca 1 & Ca 2 directly underneath each other)
+      // Part-Time (6 rows: Ca 1, Ca 1 Dur, Ca 2, Ca 2 Dur)
       const ca1 = ws.getCell(rStart, 3);
       ca1.value = 'Lên Ca 1';
       ca1.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF008000' } };
@@ -366,18 +395,28 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       ca2.border = thinBorder;
 
       const ca3 = ws.getCell(rStart + 2, 3);
-      ca3.value = 'Lên Ca 2';
-      ca3.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF7030A0' } };
-      ca3.alignment = { horizontal: 'center', vertical: 'middle' };
+      ca3.value = '';
       ca3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
       ca3.border = thinBorder;
 
       const ca4 = ws.getCell(rStart + 3, 3);
-      ca4.value = 'Xuống Ca 2';
+      ca4.value = 'Lên Ca 2';
       ca4.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF7030A0' } };
       ca4.alignment = { horizontal: 'center', vertical: 'middle' };
       ca4.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
       ca4.border = thinBorder;
+
+      const ca5 = ws.getCell(rStart + 4, 3);
+      ca5.value = 'Xuống Ca 2';
+      ca5.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF7030A0' } };
+      ca5.alignment = { horizontal: 'center', vertical: 'middle' };
+      ca5.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+      ca5.border = thinBorder;
+
+      const ca6 = ws.getCell(rStart + 5, 3);
+      ca6.value = '';
+      ca6.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+      ca6.border = thinBorder;
     }
 
     // Attendance Data Days 1..31
@@ -400,9 +439,10 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const currentCellBg = isSplitShiftRec ? 'FFFFF200' : shiftBgColor;
 
       if (!isPartTime) {
-        // Full-Time (2 rows)
+        // Full-Time (3 rows)
         const cell1 = ws.getCell(rStart, colIdx);
         const cell2 = ws.getCell(rStart + 1, colIdx);
+        const cell3 = ws.getCell(rStart + 2, colIdx);
 
         if (rec.start === 'OFF') {
           cell1.value = 'OFF';
@@ -416,6 +456,10 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell2.alignment = { horizontal: 'center', vertical: 'middle' };
           cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell2.border = thinBorder;
+
+          cell3.value = '';
+          cell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
+          cell3.border = thinBorder;
         } else {
           let displayStart = rec.start || '';
           let displayEnd = rec.end || '';
@@ -437,13 +481,22 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell2.alignment = { horizontal: 'center', vertical: 'middle' };
           cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell2.border = thinBorder;
+
+          const durStr = calcShiftDurationHHMM(displayStart, displayEnd);
+          cell3.value = durStr;
+          cell3.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF000000' } };
+          cell3.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
+          cell3.border = thinBorder;
         }
       } else {
-        // Part-Time (4 rows: Ca 1 & Ca 2 directly underneath each other)
+        // Part-Time (6 rows: Ca 1, Ca 1 Dur, Ca 2, Ca 2 Dur)
         const cell1 = ws.getCell(rStart, colIdx);
         const cell2 = ws.getCell(rStart + 1, colIdx);
         const cell3 = ws.getCell(rStart + 2, colIdx);
         const cell4 = ws.getCell(rStart + 3, colIdx);
+        const cell5 = ws.getCell(rStart + 4, colIdx);
+        const cell6 = ws.getCell(rStart + 5, colIdx);
 
         if (rec.start === 'OFF') {
           cell1.value = 'OFF';
@@ -465,8 +518,16 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell4.value = '';
           cell4.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell4.border = thinBorder;
+
+          cell5.value = '';
+          cell5.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
+          cell5.border = thinBorder;
+
+          cell6.value = '';
+          cell6.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
+          cell6.border = thinBorder;
         } else {
-          // Ca 1
+          // Ca 1 (Start & End)
           cell1.value = rec.start || '';
           cell1.font = { name: 'Times New Roman', size: 9, bold: isSplitShiftRec, color: { argb: 'FF000000' } };
           cell1.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -479,18 +540,34 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell2.border = thinBorder;
 
-          // Ca 2 (Placed directly underneath Ca 1!)
-          cell3.value = rec.start2 || '';
-          cell3.font = { name: 'Times New Roman', size: 9, bold: Boolean(rec.start2), color: { argb: 'FF7030A0' } };
+          // Ca 1 Total Duration (e.g. 05:00)
+          const dur1Str = calcShiftDurationHHMM(rec.start, rec.end);
+          cell3.value = dur1Str;
+          cell3.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF000000' } };
           cell3.alignment = { horizontal: 'center', vertical: 'middle' };
           cell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell3.border = thinBorder;
 
-          cell4.value = rec.end2 || '';
-          cell4.font = { name: 'Times New Roman', size: 9, bold: Boolean(rec.end2), color: { argb: 'FF7030A0' } };
+          // Ca 2 (Start & End)
+          cell4.value = rec.start2 || '';
+          cell4.font = { name: 'Times New Roman', size: 9, bold: Boolean(rec.start2), color: { argb: 'FF7030A0' } };
           cell4.alignment = { horizontal: 'center', vertical: 'middle' };
           cell4.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell4.border = thinBorder;
+
+          cell5.value = rec.end2 || '';
+          cell5.font = { name: 'Times New Roman', size: 9, bold: Boolean(rec.end2), color: { argb: 'FF7030A0' } };
+          cell5.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell5.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
+          cell5.border = thinBorder;
+
+          // Ca 2 Total Duration (e.g. 04:30)
+          const dur2Str = calcShiftDurationHHMM(rec.start2, rec.end2);
+          cell6.value = dur2Str;
+          cell6.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF7030A0' } };
+          cell6.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell6.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
+          cell6.border = thinBorder;
         }
       }
     }
@@ -517,7 +594,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
- * Supports Part-Time Ca 2 placed directly underneath Ca 1 for neat readability
+ * Supports Part-Time Ca 2 placed directly underneath Ca 1 with total shift hours row (e.g. 05:00, 04:30)
  * Supports Multi-Sheet Export for ALL Branches or Individual Branch Sheet
  * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png & media_1786902640441.png
  */
