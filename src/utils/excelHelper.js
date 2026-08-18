@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { getMergedFullTimeShift } from './calcUtils';
+import { getMergedFullTimeShift, calculateEmployeeMonthlyStats } from './calcUtils';
 
 /**
  * Gets the number of days in a given month and year
@@ -58,72 +58,6 @@ function calcFullTimeOvertimeHHMM(startStr, endStr) {
 }
 
 /**
- * Calculates total working days count for a Full-Time employee in the selected month
- */
-function calcFullTimeTotalWorkingDays(emp, attendanceData, year, month, daysInMonth) {
-  const formattedMonthStr = String(month).padStart(2, '0');
-  const empAtt = (attendanceData && attendanceData[emp.id]) || {};
-  let count = 0;
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dayStr = String(d).padStart(2, '0');
-    const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
-    const rec = empAtt[dateKey] || {};
-
-    if (rec.start && rec.start !== 'OFF' && rec.end && rec.end !== '-') {
-      count++;
-    }
-  }
-
-  return count;
-}
-
-/**
- * Calculates total working hours for a Part-Time employee in the selected month (returns pure number)
- */
-function calcEmployeeTotalMonthHoursNumber(emp, attendanceData, year, month, daysInMonth) {
-  const formattedMonthStr = String(month).padStart(2, '0');
-  const empAtt = (attendanceData && attendanceData[emp.id]) || {};
-  let totalMins = 0;
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dayStr = String(d).padStart(2, '0');
-    const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
-    const rec = empAtt[dateKey] || {};
-
-    if (rec.start && rec.start !== 'OFF' && rec.end && rec.end !== '-') {
-      let s1 = rec.start;
-      let e1 = rec.end;
-      if (emp.type !== 'parttime' && rec.start2 && rec.end2) {
-        const merged = getMergedFullTimeShift(rec.start, rec.end, rec.start2, rec.end2);
-        s1 = merged.start;
-        e1 = merged.end;
-      }
-      const [h1, m1] = s1.split(':').map(Number);
-      const [h2, m2] = e1.split(':').map(Number);
-      if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
-        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-        if (diff < 0) diff += 24 * 60;
-        totalMins += diff;
-      }
-    }
-
-    if (emp.type === 'parttime' && rec.start2 && rec.start2 !== 'OFF' && rec.end2 && rec.end2 !== '-') {
-      const [h1, m1] = rec.start2.split(':').map(Number);
-      const [h2, m2] = rec.end2.split(':').map(Number);
-      if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
-        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-        if (diff < 0) diff += 24 * 60;
-        totalMins += diff;
-      }
-    }
-  }
-
-  const hours = (totalMins / 60).toFixed(1);
-  return Number(hours);
-}
-
-/**
  * Branch highlight colors for employee rows (matching original cham cong.xlsx)
  */
 const BRANCH_COLORS = {
@@ -137,7 +71,7 @@ const BRANCH_COLORS = {
 /**
  * Renders Payroll Summary Block below each employee matching physical payslip in image
  * Headers: cơ bản | tăng ca | tiền thưởng | tiền ăn | tiền ăn tối | tiền cc | Tập ze | ao | tổng số tiền
- * Bottom left box displays pure number (e.g. 26 for Full-Time working days or 135.0 for Part-Time working hours) without any text labels.
+ * Bottom left box displays pure number (e.g. 16.4 for Full-Time working days or 135.0 for Part-Time working hours) matching web app stats exactly.
  */
 function renderEmployeePayrollSummaryBlock(ws, startRow, summaryValue = '') {
   const thinBorder = {
@@ -188,7 +122,7 @@ function renderEmployeePayrollSummaryBlock(ws, startRow, summaryValue = '') {
   ws.getCell(startRow + 1, 9).border = thinBorder;
   ws.getCell(startRow + 1, 10).border = thinBorder;
 
-  // Row startRow + 2: Col 1 & 2 merged for Summary Cell (Pure Number: 26 or 135.0)
+  // Row startRow + 2: Col 1 & 2 merged for Summary Cell (Pure Number matching web app: e.g. 16.4 or 135.0)
   ws.mergeCells(startRow + 2, 1, startRow + 2, 2);
   const totCell = ws.getCell(startRow + 2, 1);
   totCell.value = summaryValue;
@@ -327,6 +261,7 @@ function renderBranchSalaryAdvanceTables(ws, startRow, allEmployees, salaryAdvan
 function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, year, month, allEmployees = [], salaryAdvances = [], branches = [], targetBranchId = 'ALL') {
   const daysInMonth = getDaysInMonth(year, month);
   const formattedMonthStr = String(month).padStart(2, '0');
+  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const ws = wb.addWorksheet(sheetName, {
     views: [
@@ -710,15 +645,14 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       }
     }
 
-    // Render Pure Number in Payroll Summary Block (Bottom Left Box):
-    // Full-Time: Pure number of working days (e.g. 26)
-    // Part-Time: Pure number of total month hours (e.g. 135.0)
+    // Render Pure Number matching web app's precise calculateEmployeeMonthlyStats:
+    // Full-Time: Exact calculated Working Days (e.g. 16.4 for Dung)
+    // Part-Time: Exact calculated Working Hours (e.g. 135.0)
+    const stats = calculateEmployeeMonthlyStats(emp, attendanceData, daysArray, year, month);
     if (!isPartTime) {
-      const daysCount = calcFullTimeTotalWorkingDays(emp, attendanceData, year, month, daysInMonth);
-      renderEmployeePayrollSummaryBlock(ws, rEnd + 1, daysCount);
+      renderEmployeePayrollSummaryBlock(ws, rEnd + 1, stats.totalWorkingDays);
     } else {
-      const totalMonthHoursVal = calcEmployeeTotalMonthHoursNumber(emp, attendanceData, year, month, daysInMonth);
-      renderEmployeePayrollSummaryBlock(ws, rEnd + 1, totalMonthHoursVal);
+      renderEmployeePayrollSummaryBlock(ws, rEnd + 1, Number(stats.totalHoursWorked));
     }
 
     // Advance attendance rows + 3 payroll table rows + 2 blank separator rows!
@@ -740,9 +674,9 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
+ * Uses calculateEmployeeMonthlyStats for exact matching between Web App stats (16.4 ngày công) and Excel yellow cell (16.4)
  * Full-Time 3 rows: Lên Ca, Xuống Ca, Tăng Ca (1:00, 0:00, 5:00)
  * Part-Time 6 rows: Lên Ca 1, Xuống Ca 1, Số tiếng Ca 1, Lên Ca 2, Xuống Ca 2, Số tiếng Ca 2
- * Bottom left yellow box displays PURE NUMBER (e.g. 26 for Full-Time working days, 135.0 for Part-Time working hours) without any text labels.
  * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png & media_1786902640441.png
  */
 export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '', allBranchesList = [], salaryAdvances = []) => {
