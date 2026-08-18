@@ -71,7 +71,7 @@ const BRANCH_COLORS = {
 /**
  * Renders Payroll Summary Block below each employee matching physical payslip in image
  * Headers: cơ bản | tăng ca | tiền thưởng | tiền ăn | tiền ăn tối | tiền cc | Tập ze | ao | tổng số tiền
- * Bottom left box displays pure number (e.g. 16.4 for Full-Time working days or 135.0 for Part-Time working hours) matching web app stats exactly.
+ * Bottom row: Col A ONLY under "cơ bản" displays pure number (e.g. 14.9 for Full-Time or 167.5 for Part-Time) without merging Cols A & B and without yellow fill.
  */
 function renderEmployeePayrollSummaryBlock(ws, startRow, summaryValue = '') {
   const thinBorder = {
@@ -122,22 +122,22 @@ function renderEmployeePayrollSummaryBlock(ws, startRow, summaryValue = '') {
   ws.getCell(startRow + 1, 9).border = thinBorder;
   ws.getCell(startRow + 1, 10).border = thinBorder;
 
-  // Row startRow + 2: Col 1 & 2 merged for Summary Cell (Pure Number matching web app: e.g. 16.4 or 135.0)
-  ws.mergeCells(startRow + 2, 1, startRow + 2, 2);
+  // Row startRow + 2:
+  // Col A (Col 1) ONLY under "cơ bản": Pure number (e.g. 14.9 or 167.5), normal black font, no fill!
   const totCell = ws.getCell(startRow + 2, 1);
   totCell.value = summaryValue;
-  totCell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFC00000' } };
+  totCell.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF000000' } };
   totCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  totCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF200' } };
-  ws.getCell(startRow + 2, 1).border = thinBorder;
-  ws.getCell(startRow + 2, 2).border = thinBorder;
+  totCell.border = thinBorder;
 
-  // Row startRow + 2: Cols 3..8 empty for accountant
-  for (let c = 3; c <= 8; c++) {
+  // Cols B..H (Cols 2..8): Empty cells with thin borders (No merging Cols A & B)
+  for (let c = 2; c <= 8; c++) {
     const cell = ws.getCell(startRow + 2, c);
     cell.value = '';
     cell.border = thinBorder;
   }
+
+  // Cols I & J (Cols 9 & 10 merged): Empty merged cell with thin borders
   ws.mergeCells(startRow + 2, 9, startRow + 2, 10);
   ws.getCell(startRow + 2, 9).border = thinBorder;
   ws.getCell(startRow + 2, 10).border = thinBorder;
@@ -461,7 +461,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       ftBox.alignment = { horizontal: 'center', vertical: 'middle' };
       ftBox.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
 
-      // Full-Time: Col B Rows 2..3 = emp.name (e.g. Vân)
+      // Full-Time: Col B Rows 2..3 = emp.name (e.g. Vân / Dung)
       ws.mergeCells(rStart + 1, 2, rEnd, 2);
       const nameBox = ws.getCell(rStart + 1, 2);
       nameBox.value = emp.name || '';
@@ -653,7 +653,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       }
     }
 
-    // Render Pure Number matching web app's precise calculateEmployeeMonthlyStats:
+    // Render Pure Number in Col A ONLY (under "cơ bản", Row 3 of Payroll Block):
     // Full-Time: Exact calculated Working Days (e.g. 14.9 for Vân)
     // Part-Time: Exact calculated Working Hours (e.g. 167.5 for Hoàng)
     const stats = calculateEmployeeMonthlyStats(emp, attendanceData, daysArray, year, month);
@@ -682,8 +682,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
- * Supports "part time" box for Part-Time & "full time" box above employee name for Full-Time
- * Uses calculateEmployeeMonthlyStats for exact matching between Web App stats and Excel yellow cell
+ * Places total stats number ONLY in Col A under "cơ bản" (Row 3 of Payroll Block), no column merging A&B, no yellow fill, normal black text.
  * Full-Time 3 rows: Lên Ca, Xuống Ca, Tăng Ca (1:00, 0:00, 5:00)
  * Part-Time 6 rows: Lên Ca 1, Xuống Ca 1, Số tiếng Ca 1, Lên Ca 2, Xuống Ca 2, Số tiếng Ca 2
  * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png & media_1786902640441.png
