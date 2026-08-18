@@ -31,30 +31,48 @@ function calcShiftDurationHHMM(startStr, endStr) {
 }
 
 /**
- * Calculates Full-Time overtime hours in H:MM format
- * Standard Full-Time shift: 9 hours (e.g. 08:00 - 17:00 -> 0:00 OT)
- * Overtime: Total hours - 9h (e.g. 08:00 - 18:00 = 10h total -> 1:00 OT, 08:00 - 22:00 = 14h total -> 5:00 OT)
+ * Calculates total working hours for an employee in the selected month
  */
-function calcFullTimeOvertimeHHMM(startStr, endStr) {
-  if (!startStr || !endStr || startStr === 'OFF' || endStr === '-') return '';
-  if (typeof startStr !== 'string' || typeof endStr !== 'string') return '';
-  if (!startStr.includes(':') || !endStr.includes(':')) return '';
+function calcEmployeeTotalMonthHours(emp, attendanceData, year, month, daysInMonth) {
+  const formattedMonthStr = String(month).padStart(2, '0');
+  const empAtt = (attendanceData && attendanceData[emp.id]) || {};
+  let totalMins = 0;
 
-  const [h1, m1] = startStr.split(':').map(Number);
-  const [h2, m2] = endStr.split(':').map(Number);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dayStr = String(d).padStart(2, '0');
+    const dateKey = `${year}-${formattedMonthStr}-${dayStr}`;
+    const rec = empAtt[dateKey] || {};
 
-  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return '';
+    if (rec.start && rec.start !== 'OFF' && rec.end && rec.end !== '-') {
+      let s1 = rec.start;
+      let e1 = rec.end;
+      if (emp.type !== 'parttime' && rec.start2 && rec.end2) {
+        const merged = getMergedFullTimeShift(rec.start, rec.end, rec.start2, rec.end2);
+        s1 = merged.start;
+        e1 = merged.end;
+      }
+      const [h1, m1] = s1.split(':').map(Number);
+      const [h2, m2] = e1.split(':').map(Number);
+      if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+        if (diff < 0) diff += 24 * 60;
+        totalMins += diff;
+      }
+    }
 
-  let totalMins = (h2 * 60 + m2) - (h1 * 60 + m1);
-  if (totalMins < 0) totalMins += 24 * 60;
+    if (emp.type === 'parttime' && rec.start2 && rec.start2 !== 'OFF' && rec.end2 && rec.end2 !== '-') {
+      const [h1, m1] = rec.start2.split(':').map(Number);
+      const [h2, m2] = rec.end2.split(':').map(Number);
+      if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+        if (diff < 0) diff += 24 * 60;
+        totalMins += diff;
+      }
+    }
+  }
 
-  const standardMins = 9 * 60; // 540 mins (9h)
-  const otMins = Math.max(0, totalMins - standardMins);
-
-  const otH = Math.floor(otMins / 60);
-  const otM = String(otMins % 60).padStart(2, '0');
-
-  return `${otH}:${otM}`;
+  const hours = (totalMins / 60).toFixed(1);
+  return `${hours}h`;
 }
 
 /**
@@ -71,9 +89,9 @@ const BRANCH_COLORS = {
 /**
  * Renders Payroll Summary Block below each employee matching physical payslip in image
  * Headers: cơ bản | tăng ca | tiền thưởng | tiền ăn | tiền ăn tối | tiền cc | Tập ze | ao | tổng số tiền
- * Values left empty for accountant manual calculation as requested by user.
+ * Calculates & displays total working hours in bottom left box as requested in image media_1786988500206.png
  */
-function renderEmployeePayrollSummaryBlock(ws, startRow) {
+function renderEmployeePayrollSummaryBlock(ws, startRow, totalHoursStr = '') {
   const thinBorder = {
     top: { style: 'thin', color: { argb: 'FF000000' } },
     bottom: { style: 'thin', color: { argb: 'FF000000' } },
@@ -122,8 +140,18 @@ function renderEmployeePayrollSummaryBlock(ws, startRow) {
   ws.getCell(startRow + 1, 9).border = thinBorder;
   ws.getCell(startRow + 1, 10).border = thinBorder;
 
-  // Row startRow + 2: Empty cells with borders for Accountant Total Amount
-  for (let c = 1; c <= 8; c++) {
+  // Row startRow + 2: Col 1 & 2 merged for "tổng giờ làm hiện ở đây" (Total working hours calculated automatically)
+  ws.mergeCells(startRow + 2, 1, startRow + 2, 2);
+  const totCell = ws.getCell(startRow + 2, 1);
+  totCell.value = `Tổng giờ: ${totalHoursStr}`;
+  totCell.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FFC00000' } };
+  totCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  totCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF200' } };
+  ws.getCell(startRow + 2, 1).border = thinBorder;
+  ws.getCell(startRow + 2, 2).border = thinBorder;
+
+  // Row startRow + 2: Cols 3..8 empty for accountant
+  for (let c = 3; c <= 8; c++) {
     const cell = ws.getCell(startRow + 2, c);
     cell.value = '';
     cell.border = thinBorder;
@@ -246,7 +274,7 @@ function renderBranchSalaryAdvanceTables(ws, startRow, allEmployees, salaryAdvan
 }
 
 /**
- * Creates a styled Excel Worksheet with Fixed Columns A, B, C (STT, TÊN, CA) & Top 4 Header Rows
+ * Creates a styled Excel Worksheet with Fixed Columns A, B, C (STT, TÊN, CA) & Top Header Rows
  */
 function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, year, month, allEmployees = [], salaryAdvances = [], branches = [], targetBranchId = 'ALL') {
   const daysInMonth = getDaysInMonth(year, month);
@@ -266,7 +294,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
   });
 
   // Explicit Column Widths set BEFORE populating cells to fix left pane collapse
-  ws.getColumn(1).width = 6;  // STT (Col A)
+  ws.getColumn(1).width = 7;  // STT / TYPE (Col A)
   ws.getColumn(2).width = 18; // TÊN (Col B)
   ws.getColumn(3).width = 11; // CA (Col C)
 
@@ -309,52 +337,59 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
     }
   }
 
-  // 3. Column Header Row 4: STT, TÊN, CA(班別), 1..31
-  const cellA4 = ws.getCell(4, 1);
-  cellA4.value = 'STT';
-  cellA4.font = { name: 'Times New Roman', size: 11, bold: true };
-  cellA4.alignment = { horizontal: 'center', vertical: 'middle' };
-  cellA4.border = thinBorder;
-
-  const cellB4 = ws.getCell(4, 2);
-  cellB4.value = 'TÊN';
-  cellB4.font = { name: 'Times New Roman', size: 11, bold: true };
-  cellB4.alignment = { horizontal: 'center', vertical: 'middle' };
-  cellB4.border = thinBorder;
-
-  const cellC4 = ws.getCell(4, 3);
-  cellC4.value = 'CA(班別)';
-  cellC4.font = { name: 'Times New Roman', size: 11, bold: true };
-  cellC4.alignment = { horizontal: 'center', vertical: 'middle' };
-  cellC4.border = thinBorder;
-
-  // DAYS (Cols 4..4+daysInMonth-1)
-  for (let d = 1; d <= daysInMonth; d++) {
-    const colIdx = d + 3;
-    const cell = ws.getCell(4, colIdx);
-    const dateObj = new Date(year, month - 1, d);
-    const dayOfWeek = dateObj.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-    cell.value = d;
-    cell.font = {
-      name: 'Times New Roman',
-      size: 10,
-      bold: true,
-      color: isWeekend ? { argb: 'FFFF0000' } : { argb: 'FF000000' }
-    };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = thinBorder;
-  }
-
-  // 4. Employee Data Rows (Row 5 onwards)
-  let currentRow = 5;
+  // 4. Employee Data Blocks (Row 4 onwards)
+  let currentRow = 4;
   employeesList.forEach((emp, index) => {
     const isPartTime = emp.type === 'parttime';
-    // Full-time: 3 rows (Lên Ca, Xuống Ca, Giờ Tăng Ca)
+    // Full-time: 3 rows (Lên Ca, Xuống Ca, Ngày làm)
     // Part-time: 6 rows (Lên Ca 1, Xuống Ca 1, Số tiếng Ca 1, Lên Ca 2, Xuống Ca 2, Số tiếng Ca 2)
     const numShiftRows = isPartTime ? 6 : 3;
 
+    // --- Per-Employee Date Header Row ---
+    const headerRow = currentRow;
+    const hA = ws.getCell(headerRow, 1);
+    hA.value = 'STT';
+    hA.font = { name: 'Times New Roman', size: 10, bold: true };
+    hA.alignment = { horizontal: 'center', vertical: 'middle' };
+    hA.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+    hA.border = thinBorder;
+
+    const hB = ws.getCell(headerRow, 2);
+    hB.value = 'TÊN';
+    hB.font = { name: 'Times New Roman', size: 10, bold: true };
+    hB.alignment = { horizontal: 'center', vertical: 'middle' };
+    hB.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+    hB.border = thinBorder;
+
+    const hC = ws.getCell(headerRow, 3);
+    hC.value = 'CA(班別)';
+    hC.font = { name: 'Times New Roman', size: 10, bold: true };
+    hC.alignment = { horizontal: 'center', vertical: 'middle' };
+    hC.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+    hC.border = thinBorder;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const colIdx = d + 3;
+      const cell = ws.getCell(headerRow, colIdx);
+      const dateObj = new Date(year, month - 1, d);
+      const dayOfWeek = dateObj.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+      cell.value = d;
+      cell.font = {
+        name: 'Times New Roman',
+        size: 10,
+        bold: true,
+        color: isWeekend ? { argb: 'FFFF0000' } : { argb: 'FF000000' }
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+      cell.border = thinBorder;
+    }
+
+    currentRow += 1;
+
+    // --- Attendance Block ---
     const rStart = currentRow;
     const rEnd = currentRow + numShiftRows - 1;
     const branchBgColor = `FF${BRANCH_COLORS[emp.branchId] || 'FFE6D9'}`;
@@ -362,51 +397,34 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
     const shiftBgColor = isOddEmp ? 'FFF2F2F2' : 'FFFFFFFF';
     const empStt = emp.stt || (index + 1);
 
-    // STT (Merged A{rStart}:A{rEnd})
-    ws.mergeCells(rStart, 1, rEnd, 1);
-    const sttCell = ws.getCell(rStart, 1);
-    sttCell.value = empStt;
-    sttCell.font = { name: 'Times New Roman', size: 10, bold: true };
-    sttCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    sttCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
-    for (let r = rStart; r <= rEnd; r++) {
-      ws.getCell(r, 1).border = thinBorder;
-    }
+    if (isPartTime) {
+      // Part-Time: Merged Box 1 (Rows 1..3 across Cols A & B) = "part time"
+      ws.mergeCells(rStart, 1, rStart + 2, 2);
+      const ptBox = ws.getCell(rStart, 1);
+      ptBox.value = 'part time';
+      ptBox.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FF333333' } };
+      ptBox.alignment = { horizontal: 'center', vertical: 'middle' };
+      ptBox.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
 
-    // TÊN (Merged B{rStart}:B{rEnd})
-    ws.mergeCells(rStart, 2, rEnd, 2);
-    const nameCell = ws.getCell(rStart, 2);
-    nameCell.value = emp.name || '';
-    nameCell.font = { name: 'Times New Roman', size: 10, bold: true };
-    nameCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    nameCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
-    for (let r = rStart; r <= rEnd; r++) {
-      ws.getCell(r, 2).border = thinBorder;
-    }
+      for (let r = rStart; r <= rStart + 2; r++) {
+        ws.getCell(r, 1).border = thinBorder;
+        ws.getCell(r, 2).border = thinBorder;
+      }
 
-    // CA Labels (Col C)
-    if (!isPartTime) {
-      // Full-Time (3 rows)
-      const ca1 = ws.getCell(rStart, 3);
-      ca1.value = 'Lên Ca';
-      ca1.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF008000' } };
-      ca1.alignment = { horizontal: 'center', vertical: 'middle' };
-      ca1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
-      ca1.border = thinBorder;
+      // Part-Time: Merged Box 2 (Rows 4..6 across Cols A & B) = emp.name (e.g. Trúc Anh)
+      ws.mergeCells(rStart + 3, 1, rEnd, 2);
+      const nameBox = ws.getCell(rStart + 3, 1);
+      nameBox.value = emp.name || '';
+      nameBox.font = { name: 'Times New Roman', size: 11, bold: true, color: { argb: 'FF000000' } };
+      nameBox.alignment = { horizontal: 'center', vertical: 'middle' };
+      nameBox.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
 
-      const ca2 = ws.getCell(rStart + 1, 3);
-      ca2.value = 'Xuống Ca';
-      ca2.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF0000FF' } };
-      ca2.alignment = { horizontal: 'center', vertical: 'middle' };
-      ca2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
-      ca2.border = thinBorder;
+      for (let r = rStart + 3; r <= rEnd; r++) {
+        ws.getCell(r, 1).border = thinBorder;
+        ws.getCell(r, 2).border = thinBorder;
+      }
 
-      const ca3 = ws.getCell(rStart + 2, 3);
-      ca3.value = '';
-      ca3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
-      ca3.border = thinBorder;
-    } else {
-      // Part-Time (6 rows: Ca 1, Ca 1 Dur, Ca 2, Ca 2 Dur)
+      // Col C Labels for Part-Time
       const ca1 = ws.getCell(rStart, 3);
       ca1.value = 'Lên Ca 1';
       ca1.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF008000' } };
@@ -444,6 +462,46 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       ca6.value = '';
       ca6.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
       ca6.border = thinBorder;
+    } else {
+      // Full-Time: STT (Col A) & TÊN (Col B)
+      ws.mergeCells(rStart, 1, rEnd, 1);
+      const sttCell = ws.getCell(rStart, 1);
+      sttCell.value = empStt;
+      sttCell.font = { name: 'Times New Roman', size: 10, bold: true };
+      sttCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sttCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+
+      ws.mergeCells(rStart, 2, rEnd, 2);
+      const nameCell = ws.getCell(rStart, 2);
+      nameCell.value = emp.name || '';
+      nameCell.font = { name: 'Times New Roman', size: 10, bold: true };
+      nameCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      nameCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+
+      for (let r = rStart; r <= rEnd; r++) {
+        ws.getCell(r, 1).border = thinBorder;
+        ws.getCell(r, 2).border = thinBorder;
+      }
+
+      // Col C Labels for Full-Time
+      const ca1 = ws.getCell(rStart, 3);
+      ca1.value = 'Lên Ca';
+      ca1.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF008000' } };
+      ca1.alignment = { horizontal: 'center', vertical: 'middle' };
+      ca1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+      ca1.border = thinBorder;
+
+      const ca2 = ws.getCell(rStart + 1, 3);
+      ca2.value = 'Xuống Ca';
+      ca2.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF0000FF' } };
+      ca2.alignment = { horizontal: 'center', vertical: 'middle' };
+      ca2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+      ca2.border = thinBorder;
+
+      const ca3 = ws.getCell(rStart + 2, 3);
+      ca3.value = '';
+      ca3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+      ca3.border = thinBorder;
     }
 
     // Attendance Data Days 1..31
@@ -466,7 +524,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const currentCellBg = isSplitShiftRec ? 'FFFFF200' : shiftBgColor;
 
       if (!isPartTime) {
-        // Full-Time (3 rows: Lên Ca, Xuống Ca, Giờ Tăng Ca)
+        // Full-Time (3 rows: Lên Ca, Xuống Ca, Ngày làm)
         const cell1 = ws.getCell(rStart, colIdx);
         const cell2 = ws.getCell(rStart + 1, colIdx);
         const cell3 = ws.getCell(rStart + 2, colIdx);
@@ -484,7 +542,9 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell2.border = thinBorder;
 
-          cell3.value = '';
+          cell3.value = 'OFF';
+          cell3.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FFFF0000' } };
+          cell3.alignment = { horizontal: 'center', vertical: 'middle' };
           cell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell3.border = thinBorder;
         } else {
@@ -509,10 +569,10 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell2.border = thinBorder;
 
-          // Full-Time Row 3: Overtime Hours (Giờ tăng ca: 08:00 - 18:00 -> 1:00 OT, 08:00 - 17:00 -> 0:00 OT)
-          const otStr = calcFullTimeOvertimeHHMM(displayStart, displayEnd);
-          cell3.value = otStr;
-          cell3.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: (otStr && otStr !== '0:00') ? 'FFC00000' : 'FF555555' } };
+          // Full-Time Row 3: Ngày làm (1 nếu đi làm, empty nếu không đi làm)
+          const hasWorked = Boolean(displayStart && displayEnd);
+          cell3.value = hasWorked ? 1 : '';
+          cell3.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF000000' } };
           cell3.alignment = { horizontal: 'center', vertical: 'middle' };
           cell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell3.border = thinBorder;
@@ -600,8 +660,11 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       }
     }
 
+    // Total Month Hours calculated automatically
+    const totalMonthHoursStr = calcEmployeeTotalMonthHours(emp, attendanceData, year, month, daysInMonth);
+
     // Render Payroll Summary Block matching physical paper slip below employee's attendance rows (rEnd + 1)
-    renderEmployeePayrollSummaryBlock(ws, rEnd + 1);
+    renderEmployeePayrollSummaryBlock(ws, rEnd + 1, totalMonthHoursStr);
 
     // Advance attendance rows + 3 payroll table rows + 2 blank separator rows!
     currentRow += (numShiftRows + 5);
@@ -622,9 +685,10 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
- * Full-Time Row 3 calculates Overtime Hours (e.g. 08:00 - 18:00 -> 1:00 OT, 08:00 - 17:00 -> 0:00 OT)
- * Part-Time Ca 2 placed directly underneath Ca 1 with total shift hours row (e.g. 05:00, 04:30)
- * Supports Multi-Sheet Export for ALL Branches or Individual Branch Sheet
+ * Supports Per-Employee Date Header row (1..31)
+ * Supports Part-Time layout: Box 1 "part time" (Rows 1..3), Box 2 Employee Name (Rows 4..6)
+ * Supports Auto-calculated Total Month Hours cell in Payroll Table ("tổng giờ làm hiện ở đây")
+ * Supports Full-Time Row 3 displaying working days (1 / OFF)
  * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png & media_1786902640441.png
  */
 export const exportToExcel = async (year, month, employees = [], attendanceData = {}, branchPrefix = '', allBranchesList = [], salaryAdvances = []) => {
