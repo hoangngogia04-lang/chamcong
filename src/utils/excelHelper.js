@@ -394,7 +394,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
         ws.getCell(r, 2).border = thinBorder;
       }
 
-      // Part-Time: Merged Box 2 (Rows 4..6 across Cols A & B) = emp.name (e.g. Trúc Anh)
+      // Part-Time: Merged Box 2 (Rows 4..6 across Cols A & B) = emp.name (e.g. Hoàng / Trúc Anh)
       ws.mergeCells(rStart + 3, 1, rEnd, 2);
       const nameBox = ws.getCell(rStart + 3, 1);
       nameBox.value = emp.name || '';
@@ -446,7 +446,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       ca6.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
       ca6.border = thinBorder;
     } else {
-      // Full-Time: 3 rows (STT, TÊN)
+      // Full-Time: Col A = STT (Rows 1..3 merged)
       ws.mergeCells(rStart, 1, rEnd, 1);
       const sttCell = ws.getCell(rStart, 1);
       sttCell.value = empStt;
@@ -454,12 +454,20 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       sttCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sttCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
 
-      ws.mergeCells(rStart, 2, rEnd, 2);
-      const nameCell = ws.getCell(rStart, 2);
-      nameCell.value = emp.name || '';
-      nameCell.font = { name: 'Times New Roman', size: 10, bold: true };
-      nameCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      nameCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+      // Full-Time: Col B Row 1 = "full time"
+      const ftBox = ws.getCell(rStart, 2);
+      ftBox.value = 'full time';
+      ftBox.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FF333333' } };
+      ftBox.alignment = { horizontal: 'center', vertical: 'middle' };
+      ftBox.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
+
+      // Full-Time: Col B Rows 2..3 = emp.name (e.g. Vân)
+      ws.mergeCells(rStart + 1, 2, rEnd, 2);
+      const nameBox = ws.getCell(rStart + 1, 2);
+      nameBox.value = emp.name || '';
+      nameBox.font = { name: 'Times New Roman', size: 11, bold: true, color: { argb: 'FF000000' } };
+      nameBox.alignment = { horizontal: 'center', vertical: 'middle' };
+      nameBox.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: branchBgColor } };
 
       for (let r = rStart; r <= rEnd; r++) {
         ws.getCell(r, 1).border = thinBorder;
@@ -646,8 +654,8 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
     }
 
     // Render Pure Number matching web app's precise calculateEmployeeMonthlyStats:
-    // Full-Time: Exact calculated Working Days (e.g. 16.4 for Dung)
-    // Part-Time: Exact calculated Working Hours (e.g. 135.0)
+    // Full-Time: Exact calculated Working Days (e.g. 14.9 for Vân)
+    // Part-Time: Exact calculated Working Hours (e.g. 167.5 for Hoàng)
     const stats = calculateEmployeeMonthlyStats(emp, attendanceData, daysArray, year, month);
     if (!isPartTime) {
       renderEmployeePayrollSummaryBlock(ws, rEnd + 1, stats.totalWorkingDays);
@@ -674,7 +682,8 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
- * Uses calculateEmployeeMonthlyStats for exact matching between Web App stats (16.4 ngày công) and Excel yellow cell (16.4)
+ * Supports "part time" box for Part-Time & "full time" box above employee name for Full-Time
+ * Uses calculateEmployeeMonthlyStats for exact matching between Web App stats and Excel yellow cell
  * Full-Time 3 rows: Lên Ca, Xuống Ca, Tăng Ca (1:00, 0:00, 5:00)
  * Part-Time 6 rows: Lên Ca 1, Xuống Ca 1, Số tiếng Ca 1, Lên Ca 2, Xuống Ca 2, Số tiếng Ca 2
  * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png & media_1786902640441.png
