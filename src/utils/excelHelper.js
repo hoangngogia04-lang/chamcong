@@ -31,6 +31,33 @@ function calcShiftDurationHHMM(startStr, endStr) {
 }
 
 /**
+ * Calculates Full-Time overtime hours in H:MM format
+ * Standard Full-Time shift: 9 hours (e.g. 08:00 - 17:00 -> 0:00 OT)
+ * Overtime: Total hours - 9h (e.g. 08:00 - 18:00 = 10h total -> 1:00 OT, 08:00 - 22:00 = 14h total -> 5:00 OT)
+ */
+function calcFullTimeOvertimeHHMM(startStr, endStr) {
+  if (!startStr || !endStr || startStr === 'OFF' || endStr === '-') return '';
+  if (typeof startStr !== 'string' || typeof endStr !== 'string') return '';
+  if (!startStr.includes(':') || !endStr.includes(':')) return '';
+
+  const [h1, m1] = startStr.split(':').map(Number);
+  const [h2, m2] = endStr.split(':').map(Number);
+
+  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return '';
+
+  let totalMins = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (totalMins < 0) totalMins += 24 * 60;
+
+  const standardMins = 9 * 60; // 540 mins (9h)
+  const otMins = Math.max(0, totalMins - standardMins);
+
+  const otH = Math.floor(otMins / 60);
+  const otM = String(otMins % 60).padStart(2, '0');
+
+  return `${otH}:${otM}`;
+}
+
+/**
  * Branch highlight colors for employee rows (matching original cham cong.xlsx)
  */
 const BRANCH_COLORS = {
@@ -324,8 +351,8 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
   let currentRow = 5;
   employeesList.forEach((emp, index) => {
     const isPartTime = emp.type === 'parttime';
-    // Full-time: 3 rows (Lên Ca, Xuống Ca, Tổng tiếng)
-    // Part-time: 6 rows (Lên Ca 1, Xuống Ca 1, Tổng Ca 1, Lên Ca 2, Xuống Ca 2, Tổng Ca 2)
+    // Full-time: 3 rows (Lên Ca, Xuống Ca, Giờ Tăng Ca)
+    // Part-time: 6 rows (Lên Ca 1, Xuống Ca 1, Số tiếng Ca 1, Lên Ca 2, Xuống Ca 2, Số tiếng Ca 2)
     const numShiftRows = isPartTime ? 6 : 3;
 
     const rStart = currentRow;
@@ -439,7 +466,7 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
       const currentCellBg = isSplitShiftRec ? 'FFFFF200' : shiftBgColor;
 
       if (!isPartTime) {
-        // Full-Time (3 rows)
+        // Full-Time (3 rows: Lên Ca, Xuống Ca, Giờ Tăng Ca)
         const cell1 = ws.getCell(rStart, colIdx);
         const cell2 = ws.getCell(rStart + 1, colIdx);
         const cell3 = ws.getCell(rStart + 2, colIdx);
@@ -482,9 +509,10 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
           cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell2.border = thinBorder;
 
-          const durStr = calcShiftDurationHHMM(displayStart, displayEnd);
-          cell3.value = durStr;
-          cell3.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: 'FF000000' } };
+          // Full-Time Row 3: Overtime Hours (Giờ tăng ca: 08:00 - 18:00 -> 1:00 OT, 08:00 - 17:00 -> 0:00 OT)
+          const otStr = calcFullTimeOvertimeHHMM(displayStart, displayEnd);
+          cell3.value = otStr;
+          cell3.font = { name: 'Times New Roman', size: 9, bold: true, color: { argb: (otStr && otStr !== '0:00') ? 'FFC00000' : 'FF555555' } };
           cell3.alignment = { horizontal: 'center', vertical: 'middle' };
           cell3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: currentCellBg } };
           cell3.border = thinBorder;
@@ -594,7 +622,8 @@ function createAttendanceSheet(wb, sheetName, employeesList, attendanceData, yea
 
 /**
  * Exports current attendance matrix to a pixel-perfect styled Excel file matching E:\chamcong\cham cong.xlsx format
- * Supports Part-Time Ca 2 placed directly underneath Ca 1 with total shift hours row (e.g. 05:00, 04:30)
+ * Full-Time Row 3 calculates Overtime Hours (e.g. 08:00 - 18:00 -> 1:00 OT, 08:00 - 17:00 -> 0:00 OT)
+ * Part-Time Ca 2 placed directly underneath Ca 1 with total shift hours row (e.g. 05:00, 04:30)
  * Supports Multi-Sheet Export for ALL Branches or Individual Branch Sheet
  * Render Branch Salary Advance Mini-Tables at bottom matching image media_1786897566190.png & media_1786902640441.png
  */
